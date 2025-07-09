@@ -3,7 +3,7 @@
 session_start();
 
 // Include database configuration
-require_once 'config/database.php';
+require_once 'config/data.php';
 
 // Check if treatment ID is provided
 if (!isset($_GET['id']) || empty($_GET['id'])) {

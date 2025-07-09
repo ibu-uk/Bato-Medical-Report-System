@@ -1,4 +1,4 @@
-config/database.php
+config/data.php
 .env
 vendor/
 .idea/

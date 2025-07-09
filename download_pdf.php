@@ -3,7 +3,7 @@
 session_start();
 
 // Include database configuration
-require_once 'config/database.php';
+require_once 'config/data.php';
 
 // Check if TCPDF is installed
 if (!file_exists('lib/tcpdf/tcpdf.php')) {

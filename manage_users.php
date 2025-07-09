@@ -6,7 +6,7 @@ session_start();
 require_once 'config/timezone.php';
 
 // Include database configuration
-require_once 'config/database.php';
+require_once 'config/data.php';
 
 // Initialize database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);

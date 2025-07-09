@@ -1,7 +1,7 @@
 <?php
 // Start session
 session_start();
-require_once 'config/database.php';
+require_once 'config/data.php';
 require_once 'config/auth.php';
 
 // Only admin can access

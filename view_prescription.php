@@ -6,7 +6,7 @@ session_start();
 require_once 'config/timezone.php';
 
 // Include database configuration
-require_once 'config/database.php';
+require_once 'config/data.php';
 
 // Check if prescription ID is provided
 if (!isset($_GET['id'])) {

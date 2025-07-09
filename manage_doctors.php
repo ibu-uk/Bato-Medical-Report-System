@@ -3,7 +3,7 @@
 session_start();
 
 // Include database configuration
-require_once 'config/database.php';
+require_once 'config/data.php';
 
 // Handle form submission for adding new doctor
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_doctor'])) {

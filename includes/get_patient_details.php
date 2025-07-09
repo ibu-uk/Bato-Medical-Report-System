@@ -1,6 +1,6 @@
 <?php
 // Include database configuration
-require_once '../config/database.php';
+require_once '../config/data.php';
 
 // Check if patient ID is provided
 if (isset($_POST['patient_id'])) {

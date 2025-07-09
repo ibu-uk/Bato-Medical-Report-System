@@ -8,7 +8,7 @@ error_reporting(E_ALL);
 session_start();
 
 // Include database configuration
-require_once 'config/database.php';
+require_once 'config/data.php';
 
 // Connect to database
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);

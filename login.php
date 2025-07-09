@@ -12,7 +12,7 @@ if (isset($_SESSION['user_id'])) {
 }
 
 // Include database configuration
-require_once 'config/database.php';
+require_once 'config/data.php';
 
 $error = '';
 

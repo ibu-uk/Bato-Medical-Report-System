@@ -1,6 +1,6 @@
 <?php
 // Include database configuration
-require_once 'config/database.php';
+require_once 'config/data.php';
 
 // Define BATO SYSTEM database connection
 define('BATO_DB_HOST', 'localhost');

@@ -1,6 +1,6 @@
 <?php
 // Include database configuration
-require_once 'config/database.php';
+require_once 'config/data.php';
 
 // Get prescription ID from URL or use a default for testing
 $prescriptionId = isset($_GET['id']) ? sanitize($_GET['id']) : '1';

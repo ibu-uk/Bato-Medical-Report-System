@@ -1,7 +1,7 @@
 <?php
 // Include header and database connection
 include_once 'includes/header.php';
-include_once 'config/database.php';
+include_once 'config/data.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
