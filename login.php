@@ -145,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="login-container">
         <div class="login-logo">
-            <img src="assets/images/logo.png" alt="Bato Medical Logo">
+            <!-- <img src="assets/images/logo.png" alt="Bato Medical Logo"> -->
         </div>
         <div class="card">
             <div class="card-header">

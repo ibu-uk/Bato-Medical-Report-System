@@ -229,6 +229,10 @@ while ($row = $activityTypesResult->fetch_assoc()) {
                                 <th>Role</th>
                                 <th>Activity</th>
                                 <th>Entity ID</th>
+<th>Entity Name</th>
+                                <?php if (hasRole(['admin'])): ?>
+                                <th>Actions</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -278,6 +282,16 @@ while ($row = $activityTypesResult->fetch_assoc()) {
                                     ?>
                                 </td>
                                 <td><?php echo $row['entity_id'] ? htmlspecialchars($row['entity_id']) : '-'; ?></td>
+<td><?php echo isset($row['entity_name']) && $row['entity_name'] ? htmlspecialchars($row['entity_name']) : '-'; ?></td>
+                                <?php if (hasRole(['admin'])): ?>
+                                <td>
+                                    <a href="edit_activity.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning me-1" title="Edit"><i class="fas fa-edit"></i> Edit</a>
+                                    <form method="POST" action="delete_activity.php" style="display:inline-block;" onsubmit="return confirm('Are you sure you want to delete this activity log?');">
+                                        <input type="hidden" name="activity_id" value="<?php echo $row['id']; ?>">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i> Delete</button>
+                                    </form>
+                                </td>
+                                <?php endif; ?>
                             </tr>
                             <?php endwhile; ?>
                         </tbody>

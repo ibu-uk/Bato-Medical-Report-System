@@ -138,8 +138,11 @@ $reports = executeQuery($query);
                                                     <i class="fas fa-eye"></i>
                                                 </a>';
                                                 
-                                                // Only show delete button for admin users
+                                                // Only show edit and delete buttons for admin users
                                                 if (hasRole(['admin'])) {
+                                                    echo '<a href="edit_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-warning me-1" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>';
                                                     echo '<button class="btn btn-sm btn-danger" onclick="deleteReport(' . $row['id'] . ')" title="Delete">
                                                         <i class="fas fa-trash"></i>
                                                     </button>';

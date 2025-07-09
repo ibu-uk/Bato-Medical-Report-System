@@ -1,7 +1,30 @@
 <?php
-// Include header and database connection
-include_once 'includes/header.php';
-include_once 'config/database.php';
+// Start session at the very top
+session_start();
+
+// Include database configuration
+require_once 'config/database.php';
+// Include authentication and role functions
+require_once 'config/auth.php';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Prescription - Bato Medical Report System</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Arabic Fonts CSS -->
+    <link rel="stylesheet" href="assets/css/arabic-fonts.css">
+</head>
+<body>
+
+<?php
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -155,11 +178,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="container-fluid mt-4">
     <div class="row">
-        <!-- Sidebar -->
-        <?php include_once 'includes/sidebar.php'; ?>
-        
         <!-- Main content -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+        <main class="col-12 px-md-4">
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h1 class="h2">Edit Prescription</h1>
                 <div class="btn-toolbar mb-2 mb-md-0">

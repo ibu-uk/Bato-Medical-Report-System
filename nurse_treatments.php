@@ -158,8 +158,11 @@ if (isset($_POST['delete_treatment'])) {
                                 echo "<td>
                                         <a href='view_nurse_treatment.php?id={$row['id']}' class='btn btn-sm btn-info me-1' title='View'>
                                             <i class='fas fa-eye'></i>
-                                        </a>
-                                        <button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
+                                        </a>";
+                                        if (hasRole(['admin'])) {
+                                            echo "<a href='edit_nurse_treatment.php?id={$row['id']}' class='btn btn-sm btn-warning me-1' title='Edit'><i class='fas fa-edit'></i> Edit</a>";
+                                        }
+                                        echo "<button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
                                             <i class='fas fa-trash'></i>
                                         </button>
                                         

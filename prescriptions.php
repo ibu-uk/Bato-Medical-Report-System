@@ -4,6 +4,8 @@ session_start();
 
 // Include database configuration
 require_once 'config/database.php';
+// Include authentication and role functions
+require_once 'config/auth.php';
 
 // Handle form submission for deleting prescription
 if (isset($_POST['delete_prescription'])) {
@@ -153,8 +155,11 @@ if (isset($_POST['delete_prescription'])) {
                                 echo "<td>
                                         <a href='view_prescription.php?id={$row['id']}' class='btn btn-sm btn-primary me-1'>
                                             <i class='fas fa-eye'></i> View
-                                        </a>
-                                        <button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
+                                        </a>";
+                                        if (hasRole(['admin'])) {
+                                            echo "<a href='edit_prescription.php?id={$row['id']}' class='btn btn-sm btn-warning me-1' title='Edit'><i class='fas fa-edit'></i> Edit</a>";
+                                        }
+                                        echo "<button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
                                             <i class='fas fa-trash'></i>
                                         </button>
                                         
