@@ -3,7 +3,7 @@
 session_start();
 
 // Include database configuration
-require_once 'config/data.php';
+require_once 'config/database.php';
 // Include authentication and role functions
 require_once 'config/auth.php';
 ?>

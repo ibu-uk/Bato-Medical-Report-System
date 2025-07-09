@@ -33,7 +33,7 @@ A dynamic form-based medical report system that generates print-ready PDF report
 1. Open phpMyAdmin by navigating to [http://localhost/phpmyadmin](http://localhost/phpmyadmin)
 2. Create a new database named `bato_system` (or your preferred name)
 3. Import the database schema from `database/schema.sql`
-4. Update the database connection settings in `config/data.php` if needed
+4. Update the database connection settings in `config/database.php` if needed
 
 ### Step 4: Install Required Components
 1. Run the TCPDF installation script by navigating to [http://localhost/Bato%20Medical%20Report%20System/install_tcpdf.php](http://localhost/Bato%20Medical%20Report%20System/install_tcpdf.php)
@@ -54,7 +54,7 @@ A dynamic form-based medical report system that generates print-ready PDF report
 - Verify that the DejaVu Sans fonts are installed in the `lib/tcpdf/fonts` directory
 
 ### Database Connection Issues
-- Check that the database credentials in `config/data.php` match your MySQL setup
+- Check that the database credentials in `config/database.php` match your MySQL setup
 - Ensure MySQL service is running in XAMPP Control Panel
 
 ### Missing Components

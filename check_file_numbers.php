@@ -1,6 +1,6 @@
 <?php
 // Include database configuration
-require_once 'config/data.php';
+require_once 'config/database.php';
 
 echo "<h1>Check Patient File Numbers</h1>";
 

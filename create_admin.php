@@ -5,7 +5,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // Include database configuration
-require_once 'config/data.php';
+require_once 'config/database.php';
 
 // Connect to database
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);

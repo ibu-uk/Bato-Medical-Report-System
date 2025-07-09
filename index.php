@@ -6,7 +6,7 @@ session_start();
 require_once 'config/timezone.php';
 
 // Include database configuration
-require_once 'config/data.php';
+require_once 'config/database.php';
 
 // Include authentication helpers
 require_once 'config/auth.php';

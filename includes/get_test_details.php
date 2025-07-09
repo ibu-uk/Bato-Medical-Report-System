@@ -1,6 +1,6 @@
 <?php
 // Include database configuration
-require_once '../config/data.php';
+require_once '../config/database.php';
 
 // Check if test ID is provided
 if (isset($_POST['test_id'])) {

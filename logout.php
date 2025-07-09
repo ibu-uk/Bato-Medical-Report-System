@@ -6,7 +6,7 @@ session_start();
 require_once 'config/timezone.php';
 
 // Include database configuration
-require_once 'config/data.php';
+require_once 'config/database.php';
 
 // Check if user is logged in
 if (isset($_SESSION['user_id'])) {
