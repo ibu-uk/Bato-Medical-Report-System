@@ -1,6 +1,8 @@
 <?php
 // Start session
 session_start();
+// Include authentication helpers for role checking
+require_once 'config/auth.php';
 
 // Include database configuration
 require_once 'config/database.php';
@@ -208,11 +210,13 @@ $doctors = executeQuery($query);
                                                 echo "No signature";
                                             }
                                             echo "</td>";
-                                            echo "<td>
-                                                <button class='btn btn-sm btn-danger' onclick='deleteDoctor({$row['id']})' title='Delete'>
+                                            echo "<td>";
+                                            if (hasRole(['admin'])) {
+                                                echo "<button class='btn btn-sm btn-danger' onclick='deleteDoctor({$row['id']})' title='Delete'>
                                                     <i class='fas fa-trash'></i>
-                                                </button>
-                                            </td>";
+                                                </button>";
+                                            }
+                                            echo "</td>";
                                             echo "</tr>";
                                         }
                                     }

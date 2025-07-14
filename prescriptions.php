@@ -159,12 +159,14 @@ if (isset($_POST['delete_prescription'])) {
                                         if (hasRole(['admin'])) {
                                             echo "<a href='edit_prescription.php?id={$row['id']}' class='btn btn-sm btn-warning me-1' title='Edit'><i class='fas fa-edit'></i> Edit</a>";
                                         }
-                                        echo "<button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
-                                            <i class='fas fa-trash'></i>
-                                        </button>
+                                        if (hasRole(['admin'])) {
+                                            echo "<button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
+                                                <i class='fas fa-trash'></i>
+                                            </button>";
+                                        }
                                         
-                                        <!-- Delete Modal -->
-                                        <div class='modal fade' id='deleteModal{$row['id']}' tabindex='-1' aria-labelledby='deleteModalLabel' aria-hidden='true'>
+                                        // Delete Modal
+                                        echo "<div class='modal fade' id='deleteModal{$row['id']}' tabindex='-1' aria-labelledby='deleteModalLabel' aria-hidden='true'>
                                             <div class='modal-dialog'>
                                                 <div class='modal-content'>
                                                     <div class='modal-header'>

@@ -102,6 +102,7 @@ function sanitizeFilename($string) {
                 max-width: 90% !important;
                 margin: 25px auto 0 !important; /* Center the content and add top margin */
                 padding: 30px 40px !important; /* Increased padding to move content inward */
+
             }
             /* Ensure layout is preserved when printing */
             .row {
@@ -174,7 +175,7 @@ function sanitizeFilename($string) {
         .doctor-name, .doctor-position, .doctor-signature {
             color: blue !important;
             font-weight: bold !important;
-            display: none !important; /* Hide doctor information */
+            /* display: none !important;  Hide doctor information */
         }
     </style>
 </head>
@@ -298,78 +299,73 @@ function sanitizeFilename($string) {
 
         <!-- Test Results -->
         <div class="test-category mb-2">
-            
-            <!-- Test Results Table -->
-            <table class="table table-bordered table-sm">
-                <thead>
-                    <tr style="font-size: 0.9rem;">
-                        <th>Test</th>
-                        <th>Result</th>
-                        <th>Unit</th>
-                        <th>Ref. Range</th>
-                    </tr>
-                </thead>
-                <tbody style="font-size: 0.85rem;">
-                    <?php
-                    if ($testsResult && $testsResult->num_rows > 0) {
-                        while ($test = $testsResult->fetch_assoc()) {
-                            echo "<tr>";
-                            echo "<td style='padding: 3px 5px;'>{$test['test_name']}</td>";
-                            
-                            // Display test value with flag in red if present
-                            if (!empty($test['flag'])) {
-                                echo "<td style='padding: 3px 5px;'>{$test['test_value']} <span style='color: red;'>{$test['flag']}</span></td>";
-                            } else {
-                                echo "<td style='padding: 3px 5px;'>{$test['test_value']}</td>";
-                            }
-                            
-                            echo "<td style='padding: 3px 5px;'>{$test['unit']}</td>";
-                            echo "<td style='padding: 3px 5px;'>{$test['normal_range']}</td>";
-                            echo "</tr>";
-                            
-                            // Display remarks if present but more compact
-                            if (!empty($test['remarks'])) {
-                                echo "<tr>";
-                                echo "<td colspan='4' style='padding: 2px 5px;'><small><strong>Remarks:</strong> ";
-                                
-                                // Combine remarks into a single line with bullet points
-                                $remarks = explode("\n", $test['remarks']);
-                                $formattedRemarks = [];
-                                foreach ($remarks as $remark) {
-                                    if (trim($remark) !== '') {
-                                        $formattedRemarks[] = "• " . trim($remark);
+            <div style="page-break-inside: avoid;">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm" style="background: #fff; page-break-after: auto;">
+                        <thead>
+                            <tr style="font-size: 0.9rem;">
+                                <th>Test</th>
+                                <th>Result</th>
+                                <th>Unit</th>
+                                <th>Ref. Range</th>
+                            </tr>
+                        </thead>
+                        <tbody style="font-size: 0.85rem;">
+                            <?php
+                            if ($testsResult && $testsResult->num_rows > 0) {
+                                while ($test = $testsResult->fetch_assoc()) {
+                                    echo "<tr>";
+                                    echo "<td style='padding: 3px 5px;'>{$test['test_name']}</td>";
+                                    
+                                    // Display test value with flag in red if present
+                                    if (!empty($test['flag'])) {
+                                        echo "<td style='padding: 3px 5px;'>{$test['test_value']} <span style='color: red;'>{$test['flag']}</span></td>";
+                                    } else {
+                                        echo "<td style='padding: 3px 5px;'>{$test['test_value']}</td>";
+                                    }
+                                    
+                                    echo "<td style='padding: 3px 5px;'>{$test['unit']}</td>";
+                                    echo "<td style='padding: 3px 5px;'>{$test['normal_range']}</td>";
+                                    echo "</tr>";
+                                    
+                                    // Display remarks if present but more compact
+                                    if (!empty($test['remarks'])) {
+                                        echo "<tr>";
+                                        echo "<td colspan='4' style='padding: 2px 5px;'><small><strong>Remarks:</strong> ";
+                                        
+                                        // Combine remarks into a single line with bullet points
+                                        $remarks = explode("\n", $test['remarks']);
+                                        $formattedRemarks = [];
+                                        foreach ($remarks as $remark) {
+                                            if (trim($remark) !== '') {
+                                                $formattedRemarks[] = "• " . trim($remark);
+                                            }
+                                        }
+                                        echo implode(" | ", $formattedRemarks);
+                                        echo "</small></td>";
+                                        echo "</tr>";
                                     }
                                 }
-                                echo implode(" | ", $formattedRemarks);
-                                echo "</small></td>";
-                                echo "</tr>";
+                            } else {
+                                echo "<tr><td colspan='4' class='text-center'>No test results found</td></tr>";
                             }
-                        }
-                    } else {
-                        echo "<tr><td colspan='4' class='text-center'>No test results found</td></tr>";
-                    }
-                    ?>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Footer with Doctor Signature - adjusted position (hidden as requested) -->
-        <div class="row" style="margin-top: 100px; page-break-inside: avoid !important; break-inside: avoid !important;">
-            <div class="col-md-6">
-                <!-- Doctor signature and information hidden as requested -->
-                <div style="display: none;">
-                    <?php if (!empty($report['signature_image_path'])): ?>
-                    <img src="<?php echo $report['signature_image_path']; ?>" alt="Doctor Signature" class="doctor-signature" style="max-height: 80px;">
-                    <?php endif; ?>
-                    <p class="mt-2 doctor-name" style="margin-bottom: 0;"><?php echo $report['doctor_name']; ?></p>
-                    <p class="doctor-position" style="margin-top: 0;"><?php echo $report['doctor_position']; ?></p>
-                </div>
+                            ?>
+                        </tbody>
+                    </table>
+            <!-- Signature block directly after the table, always at the end, no extra line or border -->
+            <div style="page-break-inside: avoid !important; margin-top: 24px;">
+                <?php if (!empty($report['signature_image_path'])): ?>
+                <img src="<?php echo $report['signature_image_path']; ?>" alt="Doctor Signature" class="doctor-signature" style="max-height: 80px;">
+                <?php endif; ?>
+                <!-- Doctor name and position hidden as requested
+                <p class="mt-2 doctor-name" style="margin-bottom: 0;">
+                    <?php echo $report['doctor_name']; ?>
+                </p>
+                <p class="doctor-position" style="margin-top: 0;">
+                    <?php echo $report['doctor_position']; ?>
+                </p>
+                -->
             </div>
-            <div class="col-md-6">
-                <!-- Empty space where Lab Director used to be -->
-            </div>
-        </div>
-
         <!-- Page Number - hidden as requested -->
         <div class="text-end mt-4" style="display: none;">
             <p>Page 1 of 1</p>

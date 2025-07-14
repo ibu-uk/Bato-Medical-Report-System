@@ -291,16 +291,129 @@ function addTestRow() {
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        row.find('.test-unit').val(response.unit);
-                        row.find('.test-range').val(response.normal_range);
+                        // Store the original values for comparison later
+                        row.find('.test-unit')
+                            .val(response.unit)
+                            .data('original-value', response.unit)
+                            .prop('readonly', false);
+                        
+                        row.find('.test-range')
+                            .val(response.normal_range)
+                            .data('original-value', response.normal_range)
+                            .prop('readonly', false);
+                            
+                        // Add save button if it doesn't exist
+                        if (row.find('.save-test-details').length === 0) {
+                            const saveBtn = $('<button>', {
+                                type: 'button',
+                                class: 'btn btn-sm btn-primary save-test-details ms-2',
+                                html: '<i class="fas fa-save"></i> Save',
+                                'data-test-id': testId
+                            });
+                            row.find('.test-range').after(saveBtn);
+                            
+                            // Initially hide the save button
+                            saveBtn.hide();
+                        } else {
+                            // Update the test ID on the existing save button
+                            row.find('.save-test-details').attr('data-test-id', testId).hide();
+                        }
                     }
                 }
             });
         } else {
             // Clear fields if no test selected
-            row.find('.test-unit').val('');
-            row.find('.test-range').val('');
+            row.find('.test-unit').val('').prop('readonly', true);
+            row.find('.test-range').val('').prop('readonly', true);
+            row.find('.save-test-details').hide();
         }
+    });
+    
+    // Set up input event for unit and range fields to show save button when changed
+    $(`#${rowId}`).on('input', '.test-unit, .test-range', function() {
+        const row = $(this).closest('.test-row');
+        const unitField = row.find('.test-unit');
+        const rangeField = row.find('.test-range');
+        const saveBtn = row.find('.save-test-details');
+        
+        // Check if either field has changed from its original value
+        const unitChanged = unitField.val() !== unitField.data('original-value');
+        const rangeChanged = rangeField.val() !== rangeField.data('original-value');
+        
+        // Show or hide save button based on changes
+        if (unitChanged || rangeChanged) {
+            saveBtn.show();
+        } else {
+            saveBtn.hide();
+        }
+    });
+    
+    // Set up click event for save button
+    $(`#${rowId}`).on('click', '.save-test-details', function() {
+        const row = $(this).closest('.test-row');
+        const testId = $(this).data('test-id');
+        const unitField = row.find('.test-unit');
+        const rangeField = row.find('.test-range');
+        const saveBtn = $(this);
+        
+        // Get the new values
+        const unit = unitField.val().trim();
+        const normalRange = rangeField.val().trim();
+        
+        // Validate fields
+        if (!unit) {
+            alert('Unit field cannot be empty');
+            unitField.focus();
+            return;
+        }
+        
+        // Show loading state
+        saveBtn.html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+        saveBtn.prop('disabled', true);
+        
+        // Save the changes via AJAX
+        $.ajax({
+            url: 'includes/update_test_details.php',
+            type: 'POST',
+            data: {
+                test_id: testId,
+                unit: unit,
+                normal_range: normalRange
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Update the original values
+                    unitField.data('original-value', unit);
+                    rangeField.data('original-value', normalRange);
+                    
+                    // Show success message
+                    const alertHtml = `<div class="alert alert-success mt-2 mb-2 test-update-alert">Test details updated successfully!</div>`;
+                    row.find('.save-test-details').after(alertHtml);
+                    
+                    // Hide the alert after 3 seconds
+                    setTimeout(function() {
+                        row.find('.test-update-alert').fadeOut(function() {
+                            $(this).remove();
+                        });
+                    }, 3000);
+                    
+                    // Hide the save button
+                    saveBtn.hide();
+                } else {
+                    // Show error message
+                    alert('Failed to update test details: ' + (response.message || 'Unknown error'));
+                }
+            },
+            error: function() {
+                alert('Network error occurred while saving test details');
+            },
+            complete: function() {
+                // Reset button state
+                saveBtn.html('<i class="fas fa-save"></i> Save');
+                saveBtn.prop('disabled', false);
+            }
+        });
     });
 }
 

@@ -6,10 +6,8 @@
 // Database credentials
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
-define('DB_PASS', 'TheSild@2025b');
+define('DB_PASS', '');
 define('DB_NAME', 'bato_medical');
-
-
 
 // Create database connection
 function getDbConnection() {

@@ -104,7 +104,7 @@ if ($formFile) {
 
 // Check the actual data in the database
 echo "<h2>Direct Database Query</h2>";
-$conn = new mysqli('localhost', 'root', 'TheSild@2025b', 'bato_medical');
+$conn = new mysqli('localhost', 'root', '', 'bato_medical');
 if ($conn->connect_error) {
     echo "<p>Connection failed: " . $conn->connect_error . "</p>";
 } else {

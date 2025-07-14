@@ -4,6 +4,8 @@ require_once 'config/database.php';
 
 // Start session if needed
 session_start();
+// Include authentication helpers for role checking
+require_once 'config/auth.php';
 
 // Check if form is submitted for adding or updating test type
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -292,9 +294,10 @@ $result = executeQuery($query);
                                     <td><?php echo $row['unit']; ?></td>
                                     <td><?php echo $row['normal_range']; ?></td>
                                     <td>
+                                        <?php if (hasRole(['admin'])): ?>
                                         <a href="manage_test_types.php?edit=<?php echo $row['id']; ?>" class="btn btn-sm btn-primary">Edit</a>
-                                        <a href="manage_test_types.php?delete=<?php echo $row['id']; ?>" class="btn btn-sm btn-danger" 
-                                           onclick="return confirm('Are you sure you want to delete this test type?')">Delete</a>
+                                        <a href="manage_test_types.php?delete=<?php echo $row['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this test type?')">Delete</a>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>

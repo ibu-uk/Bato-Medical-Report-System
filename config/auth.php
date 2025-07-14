@@ -42,7 +42,7 @@ function requireRole($roles) {
 }
 
 // Function to log user activity
-function logUserActivity($activityType, $entityId = null) {
+function logUserActivity($activityType, $entityId = null, $details = null, $entityName = null) {
     if (!isLoggedIn()) {
         return false;
     }
@@ -56,12 +56,30 @@ function logUserActivity($activityType, $entityId = null) {
         }
     }
     
-    $logQuery = "INSERT INTO user_activity_log (user_id, activity_type, entity_id, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)";
+    // Get current timestamp with timezone
+    $timestamp = date('Y-m-d H:i:s');
+    
+    // Check if the user_activity_log table has the necessary columns
+    $checkColumnsQuery = "SHOW COLUMNS FROM user_activity_log LIKE 'details'";
+    $columnsResult = $conn->query($checkColumnsQuery);
+    
+    // If the details column doesn't exist, alter the table to add it
+    if ($columnsResult->num_rows == 0) {
+        $alterQuery = "ALTER TABLE user_activity_log 
+                       ADD COLUMN details TEXT NULL AFTER entity_id, 
+                       ADD COLUMN entity_name VARCHAR(255) NULL AFTER details";
+        $conn->query($alterQuery);
+    }
+    
+    // Prepare the query with the new columns
+    $logQuery = "INSERT INTO user_activity_log 
+                (user_id, activity_type, entity_id, details, entity_name, ip_address, user_agent, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     $logStmt = $conn->prepare($logQuery);
     $userId = $_SESSION['user_id'];
     $ip = $_SERVER['REMOTE_ADDR'];
     $userAgent = $_SERVER['HTTP_USER_AGENT'];
-    $logStmt->bind_param("isiss", $userId, $activityType, $entityId, $ip, $userAgent);
+    $logStmt->bind_param("isisssss", $userId, $activityType, $entityId, $details, $entityName, $ip, $userAgent, $timestamp);
     $result = $logStmt->execute();
     $logStmt->close();
     

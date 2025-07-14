@@ -162,11 +162,13 @@ if (isset($_POST['delete_treatment'])) {
                                         if (hasRole(['admin'])) {
                                             echo "<a href='edit_nurse_treatment.php?id={$row['id']}' class='btn btn-sm btn-warning me-1' title='Edit'><i class='fas fa-edit'></i> Edit</a>";
                                         }
-                                        echo "<button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
-                                            <i class='fas fa-trash'></i>
-                                        </button>
-                                        
-                                        <!-- Delete Modal -->
+                                        if (hasRole(['admin'])) {
+                                            echo "<button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
+                                                <i class='fas fa-trash'></i>
+                                            </button>";
+                                        }
+                                      echo "
+                                      <!-- Delete Modal -->
                                         <div class='modal fade' id='deleteModal{$row['id']}' tabindex='-1' aria-labelledby='deleteModalLabel' aria-hidden='true'>
                                             <div class='modal-dialog'>
                                                 <div class='modal-content'>

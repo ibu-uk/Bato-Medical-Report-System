@@ -29,10 +29,10 @@ $endDate = isset($_GET['end_date']) ? sanitize($_GET['end_date']) : date('Y-m-d'
 // Build query with filters
 $query = "SELECT l.*, u.username, u.full_name, u.role 
           FROM user_activity_log l
-          JOIN users u ON l.user_id = u.id
+          LEFT JOIN users u ON l.user_id = u.id
           WHERE 1=1";
 
-$params = [];
+$params = array();
 $types = "";
 
 if (!empty($userId)) {
@@ -74,7 +74,7 @@ $result = $stmt->get_result();
 // Get all users for filter dropdown
 $usersQuery = "SELECT id, username, full_name FROM users ORDER BY username";
 $usersResult = executeQuery($usersQuery);
-$users = [];
+$users = array();
 while ($row = $usersResult->fetch_assoc()) {
     $users[] = $row;
 }
@@ -82,7 +82,7 @@ while ($row = $usersResult->fetch_assoc()) {
 // Get distinct activity types for filter dropdown
 $activityTypesQuery = "SELECT DISTINCT activity_type FROM user_activity_log ORDER BY activity_type";
 $activityTypesResult = executeQuery($activityTypesQuery);
-$activityTypes = [];
+$activityTypes = array();
 while ($row = $activityTypesResult->fetch_assoc()) {
     $activityTypes[] = $row['activity_type'];
 }
@@ -221,18 +221,13 @@ while ($row = $activityTypesResult->fetch_assoc()) {
         <div class="card">
             <div class="card-body">
                 <div class="table-responsive">
-                    <table id="activityTable" class="table table-striped table-hover">
+                    <table id="activityTable" class="table table-striped table-bordered">
                         <thead>
                             <tr>
-                                <th>Date & Time</th>
+                                <th>Timestamp</th>
                                 <th>User</th>
-                                <th>Role</th>
-                                <th>Activity</th>
-                                <th>Entity ID</th>
-<th>Entity Name</th>
-                                <?php if (hasRole(['admin'])): ?>
-                                <th>Actions</th>
-                                <?php endif; ?>
+                                <th>Activity Type</th>
+                                <th>Entity</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -241,57 +236,47 @@ while ($row = $activityTypesResult->fetch_assoc()) {
                                 <td><?php echo date('d/m/Y H:i:s', strtotime($row['created_at'])); ?></td>
                                 <td><?php echo htmlspecialchars($row['full_name']); ?> (<?php echo htmlspecialchars($row['username']); ?>)</td>
                                 <td>
-                                    <span class="badge <?php 
-                                        echo match($row['role']) {
-                                            'admin' => 'bg-danger',
-                                            'doctor' => 'bg-primary',
-                                            'receptionist' => 'bg-success',
-                                            'nurse' => 'bg-info',
-                                            default => 'bg-secondary'
-                                        };
-                                    ?>">
-                                        <?php echo ucfirst(htmlspecialchars($row['role'])); ?>
-                                    </span>
-                                </td>
-                                <td>
                                     <?php 
-                                    // Format activity type for display
-                                    $activityTypeDisplay = str_replace('_', ' ', $row['activity_type']);
-                                    $activityTypeDisplay = ucwords($activityTypeDisplay);
+                                    $activityTypeDisplay = str_replace('_', ' ', ucfirst($row['activity_type']));
                                     
-                                    // Set icon based on activity type
+                                    // Add icons based on activity type
                                     $icon = match($row['activity_type']) {
                                         'login' => '<i class="fas fa-sign-in-alt text-success"></i>',
                                         'logout' => '<i class="fas fa-sign-out-alt text-danger"></i>',
                                         'create_report' => '<i class="fas fa-file-medical text-primary"></i>',
                                         'view_report' => '<i class="fas fa-eye text-info"></i>',
                                         'print_report' => '<i class="fas fa-print text-secondary"></i>',
-                                        'delete_report' => '<i class="fas fa-trash text-danger"></i>',
-                                        'create_prescription' => '<i class="fas fa-prescription text-primary"></i>',
-                                        'view_prescription' => '<i class="fas fa-eye text-info"></i>',
-                                        'print_prescription' => '<i class="fas fa-print text-secondary"></i>',
-                                        'create_treatment' => '<i class="fas fa-user-nurse text-primary"></i>',
-                                        'view_treatment' => '<i class="fas fa-eye text-info"></i>',
-                                        'print_treatment' => '<i class="fas fa-print text-secondary"></i>',
                                         'add_patient' => '<i class="fas fa-user-plus text-success"></i>',
                                         'edit_patient' => '<i class="fas fa-user-edit text-warning"></i>',
+                                        'delete_report' => '<i class="fas fa-trash text-danger"></i>',
+                                        'delete_patient' => '<i class="fas fa-user-times text-danger"></i>',
+                                        'search_patient' => '<i class="fas fa-search text-info"></i>',
+                                        'edit_test_type' => '<i class="fas fa-vial text-warning"></i>',
+                                        'view_test_types' => '<i class="fas fa-vials text-info"></i>',
+                                        'export_report' => '<i class="fas fa-file-export text-primary"></i>',
+                                        'import_data' => '<i class="fas fa-file-import text-primary"></i>',
+                                        'view_logs' => '<i class="fas fa-history text-secondary"></i>',
                                         default => '<i class="fas fa-history"></i>'
                                     };
                                     
                                     echo $icon . ' ' . $activityTypeDisplay;
                                     ?>
                                 </td>
-                                <td><?php echo $row['entity_id'] ? htmlspecialchars($row['entity_id']) : '-'; ?></td>
-<td><?php echo isset($row['entity_name']) && $row['entity_name'] ? htmlspecialchars($row['entity_name']) : '-'; ?></td>
-                                <?php if (hasRole(['admin'])): ?>
                                 <td>
-                                    <a href="edit_activity.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning me-1" title="Edit"><i class="fas fa-edit"></i> Edit</a>
-                                    <form method="POST" action="delete_activity.php" style="display:inline-block;" onsubmit="return confirm('Are you sure you want to delete this activity log?');">
-                                        <input type="hidden" name="activity_id" value="<?php echo $row['id']; ?>">
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i> Delete</button>
-                                    </form>
+                                    <?php if ($row['entity_id'] || (isset($row['entity_name']) && $row['entity_name'])): ?>
+                                        <?php if ($row['entity_id']): ?>
+                                            <strong>ID:</strong> <?php echo htmlspecialchars($row['entity_id']); ?>
+                                        <?php endif; ?>
+                                        <?php if ($row['entity_id'] && isset($row['entity_name']) && $row['entity_name']): ?>
+                                            <br>
+                                        <?php endif; ?>
+                                        <?php if (isset($row['entity_name']) && $row['entity_name']): ?>
+                                            <strong>Name:</strong> <?php echo htmlspecialchars($row['entity_name']); ?>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
                                 </td>
-                                <?php endif; ?>
                             </tr>
                             <?php endwhile; ?>
                         </tbody>

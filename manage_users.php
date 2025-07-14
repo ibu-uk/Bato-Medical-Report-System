@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $role = sanitize($_POST['role']);
         $doctorId = ($role === 'doctor' && isset($_POST['doctor_id'])) ? sanitize($_POST['doctor_id']) : null;
         $isActive = isset($_POST['is_active']) ? 1 : 0;
-        $password = $_POST['password'] ?? '';
+        $password = isset($_POST['password']) ? $_POST['password'] : '';
         
         // Validate input
         if (empty($username) || empty($fullName) || empty($email) || empty($role)) {
@@ -64,12 +64,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $stmt->bind_param("sssssii", $username, $hashedPassword, $fullName, $email, $role, $doctorId, $isActive);
                         
                         if ($stmt->execute()) {
-                            $message = "User created successfully";
-                            $messageType = "success";
-                        } else {
-                            $message = "Error creating user: " . $conn->error;
-                            $messageType = "danger";
-                        }
+    $message = "User created successfully";
+    $messageType = "success";
+} else {
+    $message = "Error creating user: " . $conn->error;
+    $messageType = "danger";
+}
+
                     }
                 }
             } else {
@@ -88,12 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
                 
                 if ($stmt->execute()) {
-                    $message = "User updated successfully";
-                    $messageType = "success";
-                } else {
-                    $message = "Error updating user: " . $conn->error;
-                    $messageType = "danger";
-                }
+    $message = "User updated successfully";
+    $messageType = "success";
+} else {
+    $message = "Error updating user: " . $conn->error;
+    $messageType = "danger";
+}
+
             }
         }
     } elseif ($_POST['action'] === 'delete' && isset($_POST['user_id'])) {
