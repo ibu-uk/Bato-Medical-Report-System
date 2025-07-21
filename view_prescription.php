@@ -2,6 +2,15 @@
 // Start session
 session_start();
 
+// Include authentication and role functions
+require_once 'config/auth.php';
+
+// Restrict access to admin and doctor roles only
+if (!hasRole(['admin', 'doctor'])) {
+    header('Location: index.php');
+    exit;
+}
+
 // Include timezone configuration
 require_once 'config/timezone.php';
 

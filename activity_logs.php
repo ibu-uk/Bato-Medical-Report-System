@@ -263,20 +263,44 @@ while ($row = $activityTypesResult->fetch_assoc()) {
                                     ?>
                                 </td>
                                 <td>
-                                    <?php if ($row['entity_id'] || (isset($row['entity_name']) && $row['entity_name'])): ?>
-                                        <?php if ($row['entity_id']): ?>
-                                            <strong>ID:</strong> <?php echo htmlspecialchars($row['entity_id']); ?>
-                                        <?php endif; ?>
-                                        <?php if ($row['entity_id'] && isset($row['entity_name']) && $row['entity_name']): ?>
-                                            <br>
-                                        <?php endif; ?>
-                                        <?php if (isset($row['entity_name']) && $row['entity_name']): ?>
-                                            <strong>Name:</strong> <?php echo htmlspecialchars($row['entity_name']); ?>
-                                        <?php endif; ?>
-                                    <?php else: ?>
-                                        -
-                                    <?php endif; ?>
-                                </td>
+    <?php
+    // Show patient name for report-related actions
+    $reportActions = ['view_report', 'print_report', 'delete_report'];
+    if (in_array($row['activity_type'], $reportActions) && $row['entity_id']) {
+        $patientName = '';
+        // Use entity_name if already present, otherwise fetch from DB
+        if (isset($row['entity_name']) && $row['entity_name']) {
+            $patientName = $row['entity_name'];
+        } else {
+            // Query patient name from reports table
+            $stmtPatient = $conn->prepare("SELECT p.name FROM reports r JOIN patients p ON r.patient_id = p.id WHERE r.id = ? LIMIT 1");
+            $stmtPatient->bind_param("i", $row['entity_id']);
+            $stmtPatient->execute();
+            $stmtPatient->bind_result($patientNameResult);
+            if ($stmtPatient->fetch()) {
+                $patientName = $patientNameResult;
+            }
+            $stmtPatient->close();
+        }
+        echo '<strong>ID:</strong> ' . htmlspecialchars($row['entity_id']);
+        if ($patientName) {
+            echo '<br><strong>Name:</strong> ' . htmlspecialchars($patientName);
+        }
+    } elseif ($row['entity_id'] || (isset($row['entity_name']) && $row['entity_name'])) {
+        if ($row['entity_id']) {
+            echo '<strong>ID:</strong> ' . htmlspecialchars($row['entity_id']);
+        }
+        if ($row['entity_id'] && isset($row['entity_name']) && $row['entity_name']) {
+            echo '<br>';
+        }
+        if (isset($row['entity_name']) && $row['entity_name']) {
+            echo '<strong>Name:</strong> ' . htmlspecialchars($row['entity_name']);
+        }
+    } else {
+        echo '-';
+    }
+    ?>
+</td>
                             </tr>
                             <?php endwhile; ?>
                         </tbody>

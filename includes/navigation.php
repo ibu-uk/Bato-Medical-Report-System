@@ -17,9 +17,11 @@
                 <li class="nav-item">
                     <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'active' : ''; ?>" href="reports.php">Reports</a>
                 </li>
+                <?php if (hasRole(['admin', 'doctor'])): ?>
                 <li class="nav-item">
                     <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'prescriptions.php' ? 'active' : ''; ?>" href="prescriptions.php">Prescriptions</a>
                 </li>
+                <?php endif; ?>
                 <li class="nav-item">
                     <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'nurse_treatments.php' ? 'active' : ''; ?>" href="nurse_treatments.php">Nurse Treatments</a>
                 </li>

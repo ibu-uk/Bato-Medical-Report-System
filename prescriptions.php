@@ -7,6 +7,12 @@ require_once 'config/database.php';
 // Include authentication and role functions
 require_once 'config/auth.php';
 
+// Restrict access to admin and doctor roles only
+if (!hasRole(['admin', 'doctor'])) {
+    header('Location: index.php');
+    exit;
+}
+
 // Handle form submission for deleting prescription
 if (isset($_POST['delete_prescription'])) {
     $prescription_id = sanitize($_POST['prescription_id']);
