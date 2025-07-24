@@ -6,7 +6,7 @@ $db_pass = '';
 $db_name = 'bato_medical';
 
 // SQL file to import
-$sql_file = 'patients (3).sql';
+$sql_file = 'patients-24july.sql';
 
 echo "<h1>Patient Data Import Process</h1>";
 

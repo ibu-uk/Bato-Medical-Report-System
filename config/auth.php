@@ -26,7 +26,7 @@ function hasRole($roles) {
         $roles = [$roles];
     }
     
-    return in_array($_SESSION['role'], $roles);
+    return isset($_SESSION['role']) && in_array($_SESSION['role'], $roles);
 }
 
 // Function to require specific role
