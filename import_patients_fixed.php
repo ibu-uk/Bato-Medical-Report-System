@@ -2,7 +2,7 @@
 // Database configuration
 $db_host = 'localhost';
 $db_user = 'root';
-$db_pass = '';
+$db_pass = 'TheSild@2025b';
 $db_name = 'bato_medical';
 
 // SQL file to import
@@ -68,12 +68,15 @@ try {
     
     // Process the import if confirmed
     if (isset($_POST['confirm_import'])) {
+	$conn->query("SET FOREIGN_KEY_CHECKS = 0");
         // Clear existing data if requested
         if ($_POST['clear_data'] === 'yes') {
             $conn->query("TRUNCATE TABLE patients");
             echo "<p>Existing patient data cleared.</p>";
         }
-        
+
+	$conn->query("SET FOREIGN_KEY_CHECKS = 1");        
+
         $success_count = 0;
         $error_count = 0;
         
