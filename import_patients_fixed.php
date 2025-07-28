@@ -98,7 +98,7 @@ try {
                 $created_at = date('Y-m-d H:i:s'); // Current timestamp
                 
                 // Check if the patient already exists
-                $check_query = "SELECT id FROM patients WHERE civil_id = '$civil_id' LIMIT 1";
+                $check_query = "SELECT id FROM patients WHERE civil_id = '$civil_id' OR file_number = '$file_number' LIMIT 1";
                 $check_result = $conn->query($check_query);
                 
                 if ($check_result && $check_result->num_rows > 0) {

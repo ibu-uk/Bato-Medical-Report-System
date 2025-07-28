@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Insert into activity log
-        $logQuery = "INSERT INTO activity_logs (user_id, activity_type, details, timestamp) 
+        $logQuery = "INSERT INTO user_activity_log (user_id, activity_type, details, timestamp) 
                     VALUES ('$userId', 'test_update', 'Updated test type: $testName', NOW())";
         executeQuery($logQuery);
         

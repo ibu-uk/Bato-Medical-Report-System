@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (executeInsert($insertQuery)) {
                 // Log the activity
                 $userId = $_SESSION['user_id'] ?? 0;
-                $logQuery = "INSERT INTO activity_logs (user_id, activity_type, details, timestamp) 
+                $logQuery = "INSERT INTO user_activity_log (user_id, activity_type, details, timestamp) 
                            VALUES ('$userId', 'add_patient', 'Added new patient: $name (ID: $civil_id)', NOW())";
                 executeQuery($logQuery);
                 
