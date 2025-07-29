@@ -1,5 +1,11 @@
 // Main JavaScript for Bato Medical Report System
 
+// Session keep-alive: ping server every 10 minutes to prevent session timeout (90min window)
+setInterval(function() {
+    fetch('keepalive.php');
+}, 10 * 60 * 1000); // every 10 minutes
+
+
 // Function to load recent patients
 function loadRecentPatients() {
     const statusElement = $('#search_status');

@@ -61,7 +61,7 @@ $reports = executeQuery($query);
                     <li class="nav-item">
                         <a class="nav-link" href="nurse_treatments.php">Nurse Treatments</a>
                     </li>
-                    <?php if (hasRole(['admin'])): ?>
+                    <?php if (hasRole(['admin', 'doctor'])): ?>
                     <li class="nav-item">
                         <a class="nav-link" href="manage_doctors.php">Doctors</a>
                     </li>
@@ -138,8 +138,8 @@ $reports = executeQuery($query);
                                                     <i class="fas fa-eye"></i>
                                                 </a>';
                                                 
-                                                // Only show edit and delete buttons for admin users
-                                                if (hasRole(['admin'])) {
+                                                // Only show edit and delete buttons for admin and doctor users
+                                                if (hasRole(['admin', 'doctor'])) {
                                                     echo '<a href="edit_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-warning me-1" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </a>';

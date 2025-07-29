@@ -162,10 +162,10 @@ if (isset($_POST['delete_prescription'])) {
                                         <a href='view_prescription.php?id={$row['id']}' class='btn btn-sm btn-primary me-1'>
                                             <i class='fas fa-eye'></i> View
                                         </a>";
-                                        if (hasRole(['admin'])) {
+                                        if (hasRole(['admin', 'doctor'])) {
                                             echo "<a href='edit_prescription.php?id={$row['id']}' class='btn btn-sm btn-warning me-1' title='Edit'><i class='fas fa-edit'></i> Edit</a>";
                                         }
-                                        if (hasRole(['admin'])) {
+                                        if (hasRole(['admin', 'doctor'])) {
                                             echo "<button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
                                                 <i class='fas fa-trash'></i>
                                             </button>";
