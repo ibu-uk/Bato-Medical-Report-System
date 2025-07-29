@@ -32,7 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $report_date = sanitize($_POST['report_date']);
     $patient_id = intval($_POST['patient_id']);
     $doctor_id = intval($_POST['doctor_id']);
-    $update_query = "UPDATE reports SET report_date='$report_date', patient_id=$patient_id, doctor_id=$doctor_id WHERE id=$report_id";
+    $conclusion = isset($_POST['conclusion']) ? sanitize($_POST['conclusion']) : null;
+    $update_query = "UPDATE reports SET report_date='$report_date', patient_id=$patient_id, doctor_id=$doctor_id, conclusion=" . ($conclusion !== null ? "'" . $conclusion . "'" : "NULL") . " WHERE id=$report_id";
     if (executeQuery($update_query)) {
         // Handle test results
         $test_rows = isset($_POST['test_row']) ? $_POST['test_row'] : [];
@@ -174,6 +175,19 @@ if ($test_types_result && $test_types_result->num_rows > 0) {
             </tbody>
         </table>
         
+        <!-- Conclusion Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Conclusion / Doctor's Final Notes</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="conclusion" class="form-label">Conclusion / Doctor's Final Notes</label>
+                    <textarea class="form-control" id="conclusion" name="conclusion" rows="4" placeholder="Enter summary, interpretation, or final notes for this report..."><?php echo htmlspecialchars($report['conclusion'] ?? ''); ?></textarea>
+                </div>
+            </div>
+        </div>
+
         <button type="submit" class="btn btn-primary">Save Changes</button>
         <a href="reports.php" class="btn btn-secondary">Cancel</a>
     </form>

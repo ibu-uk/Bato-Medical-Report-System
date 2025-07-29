@@ -148,14 +148,14 @@ requireLogin();
                                     <h5 class="mb-0">Test Results</h5>
                                 </div>
                                 <div class="card-body">
-                                    <div class="mb-3">
-                                        <button type="button" class="btn btn-success" id="addTestBtn">
-                                            <i class="fas fa-plus"></i> Add Test
-                                        </button>
-                                    </div>
                                     <div id="testsContainer">
-                                        <!-- Test rows will be added here dynamically -->
-                                    </div>
+    <!-- Test rows will be added here dynamically -->
+</div>
+<div class="mt-3">
+    <button type="button" class="btn btn-success" id="addTestBtn">
+        <i class="fas fa-plus"></i> Add Test
+    </button>
+</div>
                                 </div>
                             </div>
 
@@ -189,6 +189,19 @@ requireLogin();
                                             <input type="text" class="form-control" id="generated_by" name="generated_by" value="<?php echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : ''; ?>" readonly>
                                             <input type="hidden" name="user_id" value="<?php echo $_SESSION['user_id']; ?>">
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Conclusion Section -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Conclusion / Doctor's Final Notes</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="conclusion" class="form-label">Conclusion / Doctor's Final Notes</label>
+                                        <textarea class="form-control" id="conclusion" name="conclusion" rows="4" placeholder="Enter summary, interpretation, or final notes for this report..."></textarea>
                                     </div>
                                 </div>
                             </div>

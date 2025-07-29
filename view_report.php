@@ -317,9 +317,12 @@ function sanitizeFilename($string) {
                                     echo "<tr>";
                                     echo "<td style='padding: 3px 5px;'>{$test['test_name']}</td>";
                                     
-                                    // Display test value with flag in red if present
+                                    // Display test value with flag color: green for NORMAL, red for HIGH/LOW, default otherwise
                                     if (!empty($test['flag'])) {
-                                        echo "<td style='padding: 3px 5px;'>{$test['test_value']} <span style='color: red;'>{$test['flag']}</span></td>";
+                                        $flag = strtoupper($test['flag']);
+                                        $flagColor = ($flag === 'NORMAL') ? 'green' : (($flag === 'HIGH' || $flag === 'LOW') ? 'red' : '');
+                                        $flagStyle = $flagColor ? "color: $flagColor; font-weight: bold;" : '';
+                                        echo "<td style='padding: 3px 5px;'>{$test['test_value']} <span style='$flagStyle'>{$test['flag']}</span></td>";
                                     } else {
                                         echo "<td style='padding: 3px 5px;'>{$test['test_value']}</td>";
                                     }
@@ -352,6 +355,14 @@ function sanitizeFilename($string) {
                             ?>
                         </tbody>
                     </table>
+            <!-- Conclusion Section -->
+            <?php if (!empty($report['conclusion'])): ?>
+            <div class="alert alert-secondary mt-4" style="border: 2px solid #888; background: #f9f9f9;">
+                <strong>Conclusion:</strong><br>
+                <span style="white-space: pre-line;"><?php echo nl2br(htmlspecialchars($report['conclusion'])); ?></span>
+            </div>
+            <?php endif; ?>
+
             <!-- Signature block directly after the table, always at the end, no extra line or border -->
             <div style="page-break-inside: avoid !important; margin-top: 24px;">
                 <?php if (!empty($report['signature_image_path'])): ?>

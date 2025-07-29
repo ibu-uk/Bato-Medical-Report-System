@@ -29,9 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $testFlags = isset($_POST['test_flag']) ? $_POST['test_flag'] : [];
     $testRemarks = isset($_POST['test_remarks']) ? $_POST['test_remarks'] : [];
     
+    // Get conclusion
+    $conclusion = isset($_POST['conclusion']) ? sanitize($_POST['conclusion']) : null;
+
     // Insert report into database
-    $reportQuery = "INSERT INTO reports (patient_id, doctor_id, report_date, generated_by, user_id, created_at) 
-                   VALUES ('$patientId', '$doctorId', '$reportDate', '$generatedBy', '$userId', NOW())";
+    $reportQuery = "INSERT INTO reports (patient_id, doctor_id, report_date, generated_by, user_id, conclusion, created_at) 
+                   VALUES ('$patientId', '$doctorId', '$reportDate', '$generatedBy', '$userId', " . ($conclusion !== null ? "'" . $conclusion . "'" : "NULL") . ", NOW())";
     $reportId = executeInsert($reportQuery);
     
     // Insert test results

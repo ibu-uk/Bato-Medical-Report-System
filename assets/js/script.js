@@ -205,15 +205,10 @@ function addTestRow() {
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Test Type</label>
-                    <div class="input-group mb-2">
-                        <input type="text" class="form-control test-search" placeholder="Search test by name">
-                        <button class="btn btn-outline-secondary clear-test-search" type="button">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <select class="form-select test-type" name="test_type_id[]" required>
+                    <select class="form-select test-type mb-2" name="test_type_id[]" required>
                         <option value="">-- Select Test --</option>
                     </select>
+                    <input type="text" class="form-control test-search" placeholder="Search test by name">
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Value</label>
@@ -221,6 +216,7 @@ function addTestRow() {
                         <input type="text" class="form-control test-value" name="test_value[]" required>
                         <select class="form-select flag-select" name="test_flag[]" style="max-width: 100px;">
                             <option value="">--</option>
+                            <option value="NORMAL" style="color: green;">NORMAL</option>
                             <option value="HIGH" style="color: red;">HIGH</option>
                             <option value="LOW" style="color: red;">LOW</option>
                         </select>
@@ -255,17 +251,58 @@ function addTestRow() {
     // Load test types for the new row
     loadTestTypes($(`#${rowId} .test-type`));
     
-    // Set up test search functionality
+    // On first row, load all test types once and cache them
+    if (!window.allTestTypes) {
+        $.ajax({
+            url: 'includes/get_test_types.php',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success && response.tests.length > 0) {
+                    window.allTestTypes = response.tests;
+                    const testSelect = $(`#${rowId} .test-type`);
+                    testSelect.find('option:not(:first)').remove();
+                    response.tests.forEach(test => {
+                        testSelect.append(`<option value="${test.id}">${test.name}</option>`);
+                    });
+                }
+            }
+        });
+    } else {
+        const testSelect = $(`#${rowId} .test-type`);
+        testSelect.find('option:not(:first)').remove();
+        window.allTestTypes.forEach(test => {
+            testSelect.append(`<option value="${test.id}">${test.name}</option>`);
+        });
+    }
+
+    // Set up test search functionality (client-side filter)
     $(`#${rowId} .test-search`).on('input', function() {
-        const searchTerm = $(this).val().trim();
+        const searchTerm = $(this).val().toLowerCase().trim();
         const testSelect = $(this).closest('.test-row').find('.test-type');
-        
-        if (searchTerm.length > 0) {
-            // Load filtered test types
-            loadTestTypes(testSelect, searchTerm);
+        let found = false;
+        testSelect.find('option').each(function() {
+            if ($(this).val() === '') return; // always show placeholder
+            const text = $(this).text().toLowerCase();
+            if (text.includes(searchTerm)) {
+                $(this).show();
+                found = true;
+            } else {
+                $(this).hide();
+            }
+        });
+        // Show/hide 'No tests found' option
+        if (!found && searchTerm.length > 0) {
+            if (testSelect.find('option.no-match').length === 0) {
+                testSelect.append('<option class="no-match" disabled selected>No tests found</option>');
+            }
         } else {
-            // Load all test types if search is cleared
-            loadTestTypes(testSelect);
+            testSelect.find('option.no-match').remove();
+        }
+        // If search is cleared, show all options
+        if (searchTerm.length === 0) {
+            testSelect.find('option').show();
+            testSelect.find('option.no-match').remove();
         }
     });
     
