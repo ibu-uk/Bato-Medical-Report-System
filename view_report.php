@@ -48,6 +48,7 @@ $testsQuery = "SELECT rt.test_value, rt.flag, rt.remarks, tt.name as test_name, 
                WHERE rt.report_id = '$reportId'";
 $testsResult = executeQuery($testsQuery);
 
+
 // Get clinic info
 $clinicQuery = "SELECT * FROM clinic_info LIMIT 1";
 $clinicResult = executeQuery($clinicQuery);

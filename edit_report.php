@@ -2,10 +2,17 @@
 // Start session
 session_start();
 require_once 'config/database.php';
+global $conn;
+if (!isset($conn) || !$conn) {
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    if ($conn->connect_error) {
+        die("Database connection failed: " . $conn->connect_error);
+    }
+}
 require_once 'config/auth.php';
 
-// Only admin can access
-if (!hasRole(['admin'])) {
+// Only admin or doctor can access
+if (!hasRole(['admin', 'doctor'])) {
     header('Location: reports.php');
     exit;
 }
@@ -29,6 +36,7 @@ $report = $result->fetch_assoc();
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     $report_date = sanitize($_POST['report_date']);
     $patient_id = intval($_POST['patient_id']);
     $doctor_id = intval($_POST['doctor_id']);
@@ -46,10 +54,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update existing
                 $report_test_id = intval($row['report_test_id']);
                 $existing_ids[] = $report_test_id;
-                executeQuery("UPDATE report_tests SET test_type_id=$test_type_id, test_value='$test_value', flag='$flag' WHERE id=$report_test_id");
+                $update_sql = "UPDATE report_tests SET test_type_id=$test_type_id, test_value='$test_value', flag='$flag' WHERE id=$report_test_id";
+                if (!executeQuery($update_sql)) {
+                    echo '<pre style="color:red;">UPDATE ERROR: '.mysqli_error($conn).'\nSQL: '.$update_sql.'</pre>';
+                }
             } else {
                 // Insert new
-                executeQuery("INSERT INTO report_tests (report_id, test_type_id, test_value, flag) VALUES ($report_id, $test_type_id, '$test_value', '$flag')");
+                $insert_sql = "INSERT INTO report_tests (report_id, test_type_id, test_value, flag) VALUES ($report_id, $test_type_id, '$test_value', '$flag')";
+                if (executeQuery($insert_sql)) {
+                    $new_id = mysqli_insert_id($conn);
+                    echo '<pre style="color:blue;">DEBUG: Inserted new test, mysqli_insert_id=' . $new_id . '</pre>';
+                    if ($new_id) {
+                        $existing_ids[] = $new_id;
+                    } else {
+                        // Fallback: fetch the latest inserted test row for this report and test_type_id
+                        $fallback_sql = "SELECT id FROM report_tests WHERE report_id=$report_id AND test_type_id=$test_type_id ORDER BY id DESC LIMIT 1";
+                        $fallback_result = executeQuery($fallback_sql);
+                        if ($fallback_result && $fallback_result->num_rows > 0) {
+                            $fallback_row = $fallback_result->fetch_assoc();
+                            $existing_ids[] = intval($fallback_row['id']);
+                            echo '<pre style="color:orange;">DEBUG: Fallback used, inserted row id=' . intval($fallback_row['id']) . '</pre>';
+                        } else {
+                            echo '<pre style="color:red;">ERROR: Could not determine inserted test row ID for deletion protection.</pre>';
+                        }
+                    }
+                } else {
+                    echo '<pre style="color:red;">INSERT ERROR: '.mysqli_error($conn).'\nSQL: '.$insert_sql.'</pre>';
+                }
             }
         }
         // Delete removed test results
@@ -60,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             executeQuery("DELETE FROM report_tests WHERE report_id=$report_id");
         }
         $_SESSION['success'] = "Report updated successfully.";
-        header('Location: reports.php');
+        header('Location: view_report.php?id=' . $report_id);
         exit;
     } else {
         $error = "Failed to update report. ";
@@ -136,6 +167,7 @@ if ($test_types_result && $test_types_result->num_rows > 0) {
 
         <!-- Test Results Section -->
         <h5 class="mt-4">Test Results</h5>
+        <button type="button" id="add-test-row" class="btn btn-success mb-2"><i class="fa fa-plus"></i> Add Test</button>
         <table class="table table-bordered" id="test-results-table">
             <thead>
                 <tr>
@@ -196,17 +228,17 @@ if ($test_types_result && $test_types_result->num_rows > 0) {
     <table style="display:none"><tbody>
         <tr id="test-row-template">
             <td>
-                <input type="hidden" name="TEMPLATE[report_test_id]" value="">
-                <select class="form-select test-type-select" name="TEMPLATE[test_type_id]" required>
+                <input type="hidden" name="test_row[TEMPLATE][report_test_id]" value="">
+                <select class="form-select test-type-select" name="test_row[TEMPLATE][test_type_id]" required>
                     <option value="">Select Test</option>
                     <?php foreach ($all_test_types as $tt): ?>
                         <option value="<?php echo $tt['id']; ?>" data-unit="<?php echo htmlspecialchars($tt['unit']); ?>" data-range="<?php echo htmlspecialchars($tt['normal_range']); ?>"><?php echo htmlspecialchars($tt['name']); ?></option>
                     <?php endforeach; ?>
                 </select>
             </td>
-            <td><input type="text" class="form-control" name="TEMPLATE[test_value]" value="" required></td>
+            <td><input type="text" class="form-control" name="test_row[TEMPLATE][test_value]" value="" required></td>
             <td>
-                <select class="form-select" name="TEMPLATE[flag]">
+                <select class="form-select" name="test_row[TEMPLATE][flag]">
                     <option value="">Normal</option>
                     <option value="High">High</option>
                     <option value="Low">Low</option>
@@ -228,9 +260,9 @@ if ($test_types_result && $test_types_result->num_rows > 0) {
         let rowIdx = <?php echo count($test_results); ?>;
         $('#add-test-row').click(function() {
             let $tpl = $('#test-row-template').clone().removeAttr('id');
-            let html = $tpl.html().replace(/TEMPLATE/g, 'test_row['+rowIdx+']');
-            // Wrap in <tr> so jQuery parses it as a row
-            let $row = $('<tr>' + html + '</tr>').children();
+            let html = $tpl.html().replace(/test_row\[TEMPLATE\]/g, 'test_row['+rowIdx+']');
+            // Create a <tr> element directly
+            let $row = $('<tr>' + html + '</tr>');
             $('#test-results-table tbody').append($row);
             // When user selects a test, autofill unit/range
             $row.find('.test-type-select').on('change', function() {

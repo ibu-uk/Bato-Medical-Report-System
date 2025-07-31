@@ -14,6 +14,12 @@ require_once 'config/auth.php';
 // Require login to access this page
 requireLogin();
 
+// Only admin or doctor can access
+if (!hasRole(['admin', 'doctor'])) {
+    header('Location: reports.php');
+    exit;
+}
+
 // Check if report ID is provided
 if (!isset($_GET['id'])) {
     header("Location: reports.php");
