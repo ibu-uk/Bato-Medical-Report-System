@@ -37,9 +37,7 @@ $report = $result->fetch_assoc();
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // DEBUG: Print POSTed test_row array (remove after debugging)
-    if (hasRole(['admin', 'doctor'])) {
-        echo '<pre style="color:purple;">DEBUG $_POST[\'test_row\']:\n' . htmlspecialchars(print_r($_POST['test_row'] ?? [], true)) . '</pre>';
-    }
+
 
     $report_date = sanitize($_POST['report_date']);
     $patient_id = intval($_POST['patient_id']);
@@ -67,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $insert_sql = "INSERT INTO report_tests (report_id, test_type_id, test_value, flag) VALUES ($report_id, $test_type_id, '$test_value', '$flag')";
                 if (executeQuery($insert_sql)) {
                     $new_id = mysqli_insert_id($conn);
-                    echo '<pre style="color:blue;">DEBUG: Inserted new test, mysqli_insert_id=' . $new_id . '</pre>';
+                    
                     if ($new_id) {
                         $existing_ids[] = $new_id;
                     } else {
@@ -77,9 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($fallback_result && $fallback_result->num_rows > 0) {
                             $fallback_row = $fallback_result->fetch_assoc();
                             $existing_ids[] = intval($fallback_row['id']);
-                            echo '<pre style="color:orange;">DEBUG: Fallback used, inserted row id=' . intval($fallback_row['id']) . '</pre>';
+                            
                         } else {
-                            echo '<pre style="color:red;">ERROR: Could not determine inserted test row ID for deletion protection.</pre>';
+                            
                         }
                     }
                 } else {

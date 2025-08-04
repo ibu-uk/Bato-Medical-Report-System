@@ -48,6 +48,14 @@ $testsQuery = "SELECT rt.test_value, rt.flag, rt.remarks, tt.name as test_name, 
                WHERE rt.report_id = '$reportId'";
 $testsResult = executeQuery($testsQuery);
 
+// Count number of tests for dynamic print page break
+$testCount = 0;
+if ($testsResult && $testsResult->num_rows > 0) {
+    $testCount = $testsResult->num_rows;
+    // Rewind result pointer for later fetch
+    $testsResult->data_seek(0);
+}
+
 
 // Get clinic info
 $clinicQuery = "SELECT * FROM clinic_info LIMIT 1";
@@ -125,9 +133,11 @@ function sanitizeFilename($string) {
             
             /* Hide URL and other browser-generated content when printing */
             @page {
-                size: auto;   /* auto is the default anyway */
-                margin: 0mm;  /* removes default margin */
-                margin-bottom: 0 !important;
+                size: auto;
+                margin-top: 25mm;
+                margin-right: 10mm;
+                margin-bottom: 15mm;
+                margin-left: 10mm;
             }
             @page :header {
                 display: none !important;
@@ -300,15 +310,91 @@ function sanitizeFilename($string) {
 
         <!-- Test Results -->
         <div class="test-category mb-2">
-            <div style="page-break-inside: avoid;">
+            <div>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm" style="background: #fff; page-break-after: always;">
+                    <table class="table table-bordered table-sm" style="background: #fff; table-layout: fixed;">
+<style>
+@media print {
+    body, .report-container {
+        font-size: 12px !important;
+    }
+    h3, .text-center.mb-4 {
+        font-size: 1.1rem !important;
+        margin-bottom: 0.6rem !important;
+    }
+    .table th, .table td {
+        padding: 2px 4px !important;
+        font-size: 12px !important;
+        line-height: 1.1 !important;
+    }
+    .table thead th {
+        font-size: 11.5px !important;
+        padding-top: 3px !important;
+        padding-bottom: 3px !important;
+    }
+    .report-test-name {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: initial;
+        max-width: none;
+        font-size: 12px !important;
+        word-break: break-word;
+    }
+    .report-unit, .report-range {
+        width: 70px !important;
+        font-size: 12px !important;
+    }
+    .alert-secondary {
+        font-size: 12px !important;
+        padding: 8px 10px !important;
+        margin-top: 8px !important;
+        margin-bottom: 0 !important;
+    }
+    .doctor-signature {
+        max-height: 60px !important;
+        margin-top: 10px !important;
+    }
+    .row, .col-md-6, .col-6 {
+        margin-bottom: 2px !important;
+    }
+    .clinic-info p {
+        margin-bottom: 1px !important;
+        font-size: 10px !important;
+    }
+    .table {
+        margin-bottom: 0.5rem !important;
+    }
+    .mb-4, .mb-2, .mb-0 {
+        margin-bottom: 0.3rem !important;
+    }
+    .mt-4 {
+        margin-top: 0.4rem !important;
+    }
+    .report-container {
+        padding: 10px 14px !important;
+        margin-top: 10px !important;
+    }
+}
+
+.report-test-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: initial;
+    max-width: none;
+    font-size: 0.95rem;
+    word-break: break-word;
+}
+.report-unit, .report-range {
+    width: 80px;
+    font-size: 0.95rem;
+}
+</style>
                         <thead>
                             <tr style="font-size: 0.9rem;">
-                                <th>Test</th>
-                                <th>Result</th>
-                                <th>Unit</th>
-                                <th>Ref. Range</th>
+                                <th style="width:40%">Test</th>
+                                <th style="width:15%">Result</th>
+                                <th class="report-unit">Unit</th>
+                                <th class="report-range">Ref. Range</th>
                             </tr>
                         </thead>
                         <tbody style="font-size: 0.85rem;">
@@ -316,7 +402,7 @@ function sanitizeFilename($string) {
                             if ($testsResult && $testsResult->num_rows > 0) {
                                 while ($test = $testsResult->fetch_assoc()) {
                                     echo "<tr>";
-                                    echo "<td style='padding: 3px 5px;'>{$test['test_name']}</td>";
+                                    echo "<td class='report-test-name' style='padding: 3px 5px;'>{$test['test_name']}</td>";
                                     
                                     // Display test value with flag color: green for NORMAL, red for HIGH/LOW, default otherwise
                                     if (!empty($test['flag'])) {
@@ -356,27 +442,34 @@ function sanitizeFilename($string) {
                             ?>
                         </tbody>
                     </table>
-            <!-- Conclusion Section -->
-            <?php if (!empty($report['conclusion'])): ?>
-            <div class="alert alert-secondary mt-4" style="border: 2px solid #888; background: #f9f9f9;">
-                <strong>Conclusion:</strong><br>
-                <span style="white-space: pre-line;"><?php echo nl2br(htmlspecialchars($report['conclusion'])); ?></span>
-            </div>
-            <?php endif; ?>
+            <!-- 50px space after test table -->
+<div style="height:20px;"></div>
+<!-- Conclusion and Signature: keep together on print -->
+<div style="page-break-inside: avoid;">
+    <?php if (!empty($report['conclusion'])): ?>
+    <div class="alert alert-secondary mt-4" style="border: 2px solid #888; background: #f9f9f9;">
+        <strong>Conclusion:</strong><br>
+        <span style="white-space: pre-line;">
+            <?php echo nl2br(htmlspecialchars($report['conclusion'])); ?>
+        </span>
+    </div>
+    <?php endif; ?>
 
-            <!-- Signature block directly after the table, always at the end, no extra line or border -->
-            <div style="page-break-inside: avoid !important; margin-top: 24px;">
-                <?php if (!empty($report['signature_image_path'])): ?>
-                <img src="<?php echo $report['signature_image_path']; ?>" alt="Doctor Signature" class="doctor-signature" style="max-height: 80px;">
-                <?php endif; ?>
-                <!-- Doctor name and position hidden as requested
-                <p class="mt-2 doctor-name" style="margin-bottom: 0;">
-                    <?php echo $report['doctor_name']; ?>
-                </p>
-                <p class="doctor-position" style="margin-top: 0;">
-                    <?php echo $report['doctor_position']; ?>
-                </p>
-                -->
+    <!-- Signature block directly after the table, always at the end, no extra line or border -->
+    <div style="margin-top: 24px;">
+        <?php if (!empty($report['signature_image_path'])): ?>
+        <img src="<?php echo $report['signature_image_path']; ?>" alt="Doctor Signature" class="doctor-signature" style="max-height: 80px;">
+        <?php endif; ?>
+        <!-- Doctor name and position hidden as requested
+        <p class="mt-2 doctor-name" style="margin-bottom: 0;">
+            <?php echo $report['doctor_name']; ?>
+        </p>
+        <p class="doctor-position" style="margin-top: 0;">
+            <?php echo $report['doctor_position']; ?>
+        </p>
+        -->
+    </div>
+</div>
             </div>
         <!-- Page Number - hidden as requested -->
         <div class="text-end mt-4" style="display: none;">
