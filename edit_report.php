@@ -36,6 +36,10 @@ $report = $result->fetch_assoc();
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // DEBUG: Print POSTed test_row array (remove after debugging)
+    if (hasRole(['admin', 'doctor'])) {
+        echo '<pre style="color:purple;">DEBUG $_POST[\'test_row\']:\n' . htmlspecialchars(print_r($_POST['test_row'] ?? [], true)) . '</pre>';
+    }
 
     $report_date = sanitize($_POST['report_date']);
     $patient_id = intval($_POST['patient_id']);
@@ -257,13 +261,16 @@ if ($test_types_result && $test_types_result->num_rows > 0) {
     <script>
     $(document).ready(function() {
         // Add new test row
-        let rowIdx = <?php echo count($test_results); ?>;
+        let rowIdx = $('#test-results-table tbody tr').length || <?php echo count($test_results); ?>;
         $('#add-test-row').click(function() {
             let $tpl = $('#test-row-template').clone().removeAttr('id');
-            let html = $tpl.html().replace(/test_row\[TEMPLATE\]/g, 'test_row['+rowIdx+']');
-            // Create a <tr> element directly
-            let $row = $('<tr>' + html + '</tr>');
-            $('#test-results-table tbody').append($row);
+let html = $tpl.html().replace(/test_row\[TEMPLATE\]/g, 'test_row['+rowIdx+']');
+// Ensure flag select is present
+if (html.indexOf('name="test_row['+rowIdx+'][flag]"') === -1) {
+    html = html.replace('</td>', '<select class="form-select" name="test_row['+rowIdx+'][flag]"><option value="">Normal</option><option value="High">High</option><option value="Low">Low</option></select></td>');
+}
+let $row = $('<tr>' + html + '</tr>');
+$('#test-results-table tbody').append($row);
             // When user selects a test, autofill unit/range
             $row.find('.test-type-select').on('change', function() {
                 var $select = $(this);

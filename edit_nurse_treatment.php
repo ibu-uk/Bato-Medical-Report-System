@@ -1,7 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Nurse Treatment Record</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
 <?php
-// Include header and database connection
-include_once 'includes/header.php';
-include_once 'config/database.php';
+// Start session
+session_start();
+// Include authentication and role helper
+require_once 'config/auth.php';
+// Include database connection
+require_once 'config/database.php';
+// Include navigation and layout
+include_once 'includes/navbar.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -9,6 +24,12 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Only allow admin users to access this page
+if (!hasRole(['admin'])) {
+    $_SESSION['error'] = "You do not have permission to edit treatment records.";
+    header('Location: nurse_treatments.php');
+    exit;
+}
 // Check if treatment ID is provided
 if (!isset($_GET['id']) || empty($_GET['id'])) {
     header('Location: nurse_treatments.php');
@@ -103,127 +124,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <div class="container mt-4">
-    <div class="row">
-        <!-- Main content -->
-        <main class="col-12">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Edit Nurse Treatment Record</h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <a href="nurse_treatments.php" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Treatment Records
-                    </a>
-                </div>
-            </div>
-            
-            <?php
-            // Display success or error messages
-            if (isset($_SESSION['error'])) {
-                echo '<div class="alert alert-danger">' . $_SESSION['error'] . '</div>';
-                unset($_SESSION['error']);
-            }
-            ?>
-            
-            <form method="POST" action="edit_nurse_treatment.php?id=<?php echo $treatment_id; ?>">
-                <div class="row mb-4">
-                    <!-- Patient Selection -->
-                    <div class="col-md-6 mb-3">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5>Patient Information</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="patient_search" class="form-label">Search Patient</label>
-                                    <div class="input-group mb-2">
-                                        <input type="text" class="form-control" id="patient_search" placeholder="Search by name, mobile or civil ID" autocomplete="off" value="<?php echo $patient['name']; ?>">
-                                        <button class="btn btn-outline-secondary" type="button" id="clear_search">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                    <div id="search_status" class="small text-muted mb-2">Type at least 3 characters to search</div>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="patient" class="form-label">Select Patient</label>
-                                    <div class="input-group">
-                                        <select class="form-select" id="patient" name="patient_id" required>
-                                            <option value="<?php echo $patient_id; ?>" selected><?php echo $patient['name']; ?></option>
-                                            <!-- Patient options will be loaded via AJAX -->
-                                        </select>
-                                        <a href="add_patient.php" class="btn btn-success">
-                                            <i class="fas fa-user-plus"></i> New
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="civil_id" class="form-label">Civil ID</label>
-                                    <input type="text" class="form-control" id="civil_id" value="<?php echo $patient['civil_id']; ?>" readonly>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="mobile" class="form-label">Mobile</label>
-                                    <input type="text" class="form-control" id="mobile" value="<?php echo $patient['mobile']; ?>" readonly>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Treatment Details -->
-                    <div class="col-md-6 mb-3">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5>Treatment Details</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="treatment_date" class="form-label">Date</label>
-                                    <input type="date" class="form-control" id="treatment_date" name="treatment_date" value="<?php echo $treatment['treatment_date']; ?>" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="nurse_name" class="form-label">Nurse Name</label>
-                                    <input type="text" class="form-control" id="nurse_name" name="nurse_name" value="<?php echo $treatment['nurse_name']; ?>" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="payment_status" class="form-label">Payment Status</label>
-                                    <select class="form-select" id="payment_status" name="payment_status" required>
-                                        <option value="Unpaid" <?php echo $treatment['payment_status'] == 'Unpaid' ? 'selected' : ''; ?>>Unpaid</option>
-                                        <option value="Paid" <?php echo $treatment['payment_status'] == 'Paid' ? 'selected' : ''; ?>>Paid</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Report and Treatment Section -->
-                <div class="row mb-4">
-                    <div class="col-md-6 mb-3">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5>Report</h5>
-                            </div>
-                            <div class="card-body">
-                                <textarea class="form-control" name="report" rows="5" placeholder="Enter report details here"><?php echo $treatment['report']; ?></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5>Treatment</h5>
-                            </div>
-                            <div class="card-body">
-                                <textarea class="form-control" name="treatment" rows="5" placeholder="Enter treatment details here"><?php echo $treatment['treatment']; ?></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-4">
-                    <a href="view_nurse_treatment.php?id=<?php echo $treatment_id; ?>" class="btn btn-secondary me-md-2">Cancel</a>
-                    <button type="submit" class="btn btn-primary">Update Treatment Record</button>
-                </div>
-            </form>
-        </main>
-    </div>
+    <h2>Edit Nurse Treatment Record</h2>
+    <?php if (isset($_SESSION['error'])): ?>
+        <div class="alert alert-danger"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></div>
+    <?php endif; ?>
+    <form method="POST" action="edit_nurse_treatment.php?id=<?php echo $treatment_id; ?>">
+        <div class="mb-3">
+            <label for="treatment_date" class="form-label">Treatment Date</label>
+            <input type="date" class="form-control" id="treatment_date" name="treatment_date" value="<?php echo htmlspecialchars($treatment['treatment_date']); ?>" required>
+        </div>
+        <div class="mb-3">
+            <label for="patient_id" class="form-label">Patient</label>
+            <select class="form-control" id="patient_id" name="patient_id" required>
+                <option value="<?php echo $patient['id']; ?>" selected><?php echo htmlspecialchars($patient['name']); ?></option>
+                <!-- More patient options could be loaded here if needed -->
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="civil_id" class="form-label">Civil ID</label>
+            <input type="text" class="form-control" id="civil_id" value="<?php echo htmlspecialchars($patient['civil_id']); ?>" readonly>
+        </div>
+        <div class="mb-3">
+            <label for="mobile" class="form-label">Mobile</label>
+            <input type="text" class="form-control" id="mobile" value="<?php echo htmlspecialchars($patient['mobile']); ?>" readonly>
+        </div>
+        <div class="mb-3">
+            <label for="nurse_name" class="form-label">Nurse Name</label>
+            <input type="text" class="form-control" id="nurse_name" name="nurse_name" value="<?php echo htmlspecialchars($treatment['nurse_name']); ?>" required>
+        </div>
+        <div class="mb-3">
+            <label for="payment_status" class="form-label">Payment Status</label>
+            <select class="form-control" id="payment_status" name="payment_status" required>
+                <option value="Unpaid" <?php echo $treatment['payment_status'] == 'Unpaid' ? 'selected' : ''; ?>>Unpaid</option>
+                <option value="Paid" <?php echo $treatment['payment_status'] == 'Paid' ? 'selected' : ''; ?>>Paid</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="report" class="form-label">Report</label>
+            <textarea class="form-control" id="report" name="report" rows="3" placeholder="Enter report details here..."><?php echo htmlspecialchars($treatment['report']); ?></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="treatment" class="form-label">Treatment</label>
+            <textarea class="form-control" id="treatment" name="treatment" rows="3" placeholder="Enter treatment details here..."><?php echo htmlspecialchars($treatment['treatment']); ?></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="view_nurse_treatment.php?id=<?php echo $treatment_id; ?>" class="btn btn-secondary">Cancel</a>
+    </form>
 </div>
-
 <?php include_once 'includes/footer.php'; ?>

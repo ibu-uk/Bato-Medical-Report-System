@@ -232,7 +232,7 @@ function sanitizeFilename($string) {
                     logUserActivity('print_report', $reportId);
                 }
                 ?>
-                <a href="index.php" class="btn btn-secondary">
+                <a href="reports.php" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Back
                 </a>
             </div>

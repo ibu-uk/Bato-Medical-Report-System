@@ -221,6 +221,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <label for="mobile" class="form-label">Mobile</label>
                                     <input type="text" class="form-control" id="mobile" readonly>
                                 </div>
+                                <div class="mb-3">
+                                    <label for="file_number" class="form-label">File Number</label>
+                                    <input type="text" class="form-control" id="file_number" readonly>
+                                </div>
                             </div>
                         </div>
                     </div>

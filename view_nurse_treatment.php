@@ -14,7 +14,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 $treatment_id = sanitize($_GET['id']);
 
 // Get treatment details
-$query = "SELECT nt.*, p.name AS patient_name, p.civil_id, p.mobile 
+$query = "SELECT nt.*, p.name AS patient_name, p.civil_id, p.mobile, p.file_number 
           FROM nurse_treatments nt
           JOIN patients p ON nt.patient_id = p.id
           WHERE nt.id = '$treatment_id'";
@@ -243,6 +243,10 @@ $clinic = $clinic_result->fetch_assoc();
                     <tr style="font-size: 0.9rem; line-height: 1.2;">
                         <th style="padding: 2px;">Mobile</th>
                         <td style="padding: 2px;">: <?php echo $treatment['mobile']; ?></td>
+                    </tr>
+                    <tr style="font-size: 0.9rem; line-height: 1.2;">
+                        <th style="padding: 2px;">File No.</th>
+                        <td style="padding: 2px;">: <?php echo $treatment['file_number']; ?></td>
                     </tr>
                 </table>
             </div>

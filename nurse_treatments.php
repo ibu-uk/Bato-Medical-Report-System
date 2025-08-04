@@ -4,9 +4,16 @@ session_start();
 
 // Include database configuration
 require_once 'config/database.php';
+// Include authentication and role helper
+require_once 'config/auth.php';
 
 // Handle form submission for deleting treatment
 if (isset($_POST['delete_treatment'])) {
+    if (!hasRole(['admin'])) {
+        $_SESSION['error'] = "You do not have permission to delete treatment records.";
+        header('Location: nurse_treatments.php');
+        exit;
+    }
     $treatment_id = sanitize($_POST['treatment_id']);
     $delete_query = "DELETE FROM nurse_treatments WHERE id = '$treatment_id'";
     if (executeQuery($delete_query)) {

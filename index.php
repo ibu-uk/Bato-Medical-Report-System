@@ -135,6 +135,12 @@ requireLogin();
                                             <input type="text" class="form-control" id="mobile" name="mobile" readonly>
                                         </div>
                                         <div class="col-md-6">
+                                            <label for="file_number" class="form-label">File Number</label>
+                                            <input type="text" class="form-control" id="file_number" name="file_number" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
                                             <label for="report_date" class="form-label">Report Date</label>
                                             <input type="date" class="form-control" id="report_date" name="report_date" value="<?php echo date('Y-m-d'); ?>" required>
                                         </div>

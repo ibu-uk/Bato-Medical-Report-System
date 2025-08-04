@@ -131,14 +131,17 @@ $(document).ready(function() {
         loadRecentPatients();
     });
     
-    // Patient selection - auto-fill patient details
+    // Patient selection change handler for all forms (index, add_prescription, add_nurse_treatment)
     $('#patient').change(function() {
         const patientId = $(this).val();
+        const selectedOption = $('option:selected', this);
         if (patientId) {
-            // Get Civil ID from data attribute
-            const civilId = $('option:selected', this).data('civil-id');
+            // Get Civil ID and File Number from data attributes
+            const civilId = selectedOption.data('civil-id');
+            const fileNumber = selectedOption.data('file-number');
             $('#civil_id').val(civilId);
-            
+            $('#file_number').val(fileNumber);
+
             // Fetch additional patient details via AJAX
             $.ajax({
                 url: 'includes/get_patient_details.php',
@@ -146,7 +149,7 @@ $(document).ready(function() {
                 data: { patient_id: patientId },
                 dataType: 'json',
                 success: function(response) {
-                    if (response.success) {
+                    if (response.success && response.mobile) {
                         $('#mobile').val(response.mobile);
                     }
                 }
@@ -154,6 +157,7 @@ $(document).ready(function() {
         } else {
             // Clear fields if no patient selected
             $('#civil_id').val('');
+            $('#file_number').val('');
             $('#mobile').val('');
         }
     });
