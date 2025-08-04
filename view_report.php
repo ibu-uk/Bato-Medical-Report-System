@@ -302,7 +302,7 @@ function sanitizeFilename($string) {
         <div class="test-category mb-2">
             <div style="page-break-inside: avoid;">
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm" style="background: #fff; page-break-after: auto;">
+                    <table class="table table-bordered table-sm" style="background: #fff; page-break-after: always;">
                         <thead>
                             <tr style="font-size: 0.9rem;">
                                 <th>Test</th>
