@@ -9,6 +9,7 @@ if (!isset($conn) || !$conn) {
         die("Database connection failed: " . $conn->connect_error);
     }
 }
+$conn->autocommit(true);
 require_once 'config/auth.php';
 
 // Only admin or doctor can access
@@ -45,6 +46,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conclusion = isset($_POST['conclusion']) ? sanitize($_POST['conclusion']) : null;
     $update_query = "UPDATE reports SET report_date='$report_date', patient_id=$patient_id, doctor_id=$doctor_id, conclusion=" . ($conclusion !== null ? "'" . $conclusion . "'" : "NULL") . " WHERE id=$report_id";
     if (executeQuery($update_query)) {
+    // Fetch patient name for logging
+    $patient_name = '';
+    $stmt_p = $conn->prepare("SELECT name FROM patients WHERE id = ? LIMIT 1");
+    if ($stmt_p) {
+        $stmt_p->bind_param("i", $patient_id);
+        $stmt_p->execute();
+        $stmt_p->bind_result($patient_name_result);
+        if ($stmt_p->fetch()) {
+            $patient_name = $patient_name_result;
+        }
+        $stmt_p->close();
+    }
+    // Log activity
+    logUserActivity('edit_report', $report_id, null, $patient_name);
         // Handle test results
         $test_rows = isset($_POST['test_row']) ? $_POST['test_row'] : [];
         $existing_ids = [];
@@ -57,12 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $report_test_id = intval($row['report_test_id']);
                 $existing_ids[] = $report_test_id;
                 $update_sql = "UPDATE report_tests SET test_type_id=$test_type_id, test_value='$test_value', flag='$flag' WHERE id=$report_test_id";
+                $conn->autocommit(true);
                 if (!executeQuery($update_sql)) {
                     echo '<pre style="color:red;">UPDATE ERROR: '.mysqli_error($conn).'\nSQL: '.$update_sql.'</pre>';
                 }
             } else {
                 // Insert new
                 $insert_sql = "INSERT INTO report_tests (report_id, test_type_id, test_value, flag) VALUES ($report_id, $test_type_id, '$test_value', '$flag')";
+                $conn->autocommit(true);
                 if (executeQuery($insert_sql)) {
                     $new_id = mysqli_insert_id($conn);
                     

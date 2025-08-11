@@ -58,6 +58,9 @@ if (!$prescriptionResult || $prescriptionResult->num_rows === 0) {
 $prescription = $prescriptionResult->fetch_assoc();
 $stmt->close();
 
+// Log activity for viewing prescription
+logUserActivity('view_prescription', $prescriptionId, null, $prescription['patient_name']);
+
 // Get medications from the prescription record
 $medications = [];
 

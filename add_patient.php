@@ -63,11 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             VALUES ('$name', '$civil_id', '$mobile', '$file_number')";
             
             if (executeInsert($insertQuery)) {
-                // Log the activity
-                $userId = $_SESSION['user_id'] ?? 0;
-                $logQuery = "INSERT INTO user_activity_log (user_id, activity_type, details, created_at) 
-                           VALUES ('$userId', 'add_patient', 'Added new patient: $name (ID: $civil_id)', NOW())";
-                executeQuery($logQuery);
+                // Centralized activity log
+                logUserActivity('add_patient', $civil_id, null, $name);
                 
                 $message = 'Patient added successfully.';
                 $messageType = 'success';

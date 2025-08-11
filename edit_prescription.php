@@ -164,9 +164,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Commit transaction
             $conn->query("COMMIT");
             
-            $_SESSION['success'] = "Prescription updated successfully.";
-            header('Location: view_prescription.php?id=' . $prescription_id);
-            exit;
+            // Log activity
+logUserActivity('edit_prescription', $prescription_id, null, $patient['name']);
+
+$_SESSION['success'] = "Prescription updated successfully.";
+header('Location: view_prescription.php?id=' . $prescription_id);
+exit;
         } catch (Exception $e) {
             // Rollback transaction on error
             $conn->query("ROLLBACK");

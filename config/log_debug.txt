@@ -1,0 +1,15 @@
+2025-08-05 15:46:42 LOG: edit_prescription, 20, mohamed ismail
+2025-08-05 16:46:42 LOG: view_prescription, 20, mohamed ismail
+2025-08-10 12:10:14 LOG: view_prescription, 20, mohamed ismail
+2025-08-10 12:20:42 LOG: view_prescription, 20, mohamed ismail
+2025-08-10 12:44:29 LOG: edit_report, 34, موضي عبدالله صقر العتيبي 9792
+2025-08-10 13:44:29 LOG: view_report, 34, 
+2025-08-10 12:44:49 LOG: edit_report, 34, موضي عبدالله صقر العتيبي 9792
+2025-08-10 13:44:49 LOG: view_report, 34, 
+2025-08-10 13:53:33 LOG: view_prescription, 20, mohamed ismail
+2025-08-10 12:55:19 LOG: edit_report, 34, موضي عبدالله صقر العتيبي 9792
+2025-08-10 13:55:19 LOG: view_report, 34, 
+2025-08-10 12:55:41 LOG: edit_prescription, 20, mohamed ismail
+2025-08-10 13:55:41 LOG: view_prescription, 20, mohamed ismail
+2025-08-10 14:55:48 LOG: delete_report, 34, موضي عبدالله صقر العتيبي 9792
+2025-08-10 14:59:15 LOG: view_prescription, 20, mohamed ismail

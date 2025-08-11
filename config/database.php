@@ -12,6 +12,7 @@ define('DB_NAME', 'bato_medical');
 // Create database connection
 function getDbConnection() {
     $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $conn->autocommit(true);
     
     // Check connection
     if ($conn->connect_error) {

@@ -58,6 +58,8 @@ function logUserActivity($activityType, $entityId = null, $details = null, $enti
     
     // Get current timestamp with timezone
     $timestamp = date('Y-m-d H:i:s');
+    // TEMP DEBUG: Log every attempt to log activity
+    file_put_contents(__DIR__.'/log_debug.txt', date('Y-m-d H:i:s')." LOG: $activityType, $entityId, $entityName\n", FILE_APPEND);
     
     // Check if the user_activity_log table has the necessary columns
     $checkColumnsQuery = "SHOW COLUMNS FROM user_activity_log LIKE 'details'";

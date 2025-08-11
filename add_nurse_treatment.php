@@ -57,10 +57,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $treatment_id = $stmt->insert_id;
             $stmt->close();
-            
+
+            // Fetch patient name for logging
+            $patient_name = '';
+            $stmt2 = $conn->prepare("SELECT name FROM patients WHERE id = ? LIMIT 1");
+            if ($stmt2) {
+                $stmt2->bind_param("i", $patient_id);
+                $stmt2->execute();
+                $stmt2->bind_result($patient_name_result);
+                if ($stmt2->fetch()) {
+                    $patient_name = $patient_name_result;
+                }
+                $stmt2->close();
+            }
+
+            // Log activity
+            logUserActivity('add_nurse_treatment', $treatment_id, null, $patient_name);
+
             // Commit transaction
             $conn->query("COMMIT");
-            
+
             $_SESSION['success'] = "Treatment record added successfully.";
             header('Location: nurse_treatments.php');
             exit;

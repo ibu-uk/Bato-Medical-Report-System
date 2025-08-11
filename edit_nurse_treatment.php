@@ -109,6 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Commit transaction
             $conn->query("COMMIT");
             
+            // Log activity
+            logUserActivity('edit_nurse_treatment', $treatment_id, null, $patient['name']);
             $_SESSION['success'] = "Treatment record updated successfully.";
             header('Location: view_nurse_treatment.php?id=' . $treatment_id);
             exit;

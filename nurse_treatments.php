@@ -15,8 +15,22 @@ if (isset($_POST['delete_treatment'])) {
         exit;
     }
     $treatment_id = sanitize($_POST['treatment_id']);
+    // Fetch patient name for logging before deletion
+    $patient_name = '';
+    $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p ON nt.patient_id = p.id WHERE nt.id = ? LIMIT 1");
+    if ($stmt) {
+        $stmt->bind_param("i", $treatment_id);
+        $stmt->execute();
+        $stmt->bind_result($patient_name_result);
+        if ($stmt->fetch()) {
+            $patient_name = $patient_name_result;
+        }
+        $stmt->close();
+    }
     $delete_query = "DELETE FROM nurse_treatments WHERE id = '$treatment_id'";
     if (executeQuery($delete_query)) {
+        // Log activity
+        logUserActivity('delete_nurse_treatment', $treatment_id, null, $patient_name);
         $_SESSION['success'] = "Treatment record deleted successfully.";
     } else {
         $_SESSION['error'] = "Failed to delete treatment record.";
@@ -39,6 +53,8 @@ if (isset($_POST['delete_treatment'])) {
     <link rel="stylesheet" href="assets/css/style.css">
     <!-- Arabic Fonts CSS -->
     <link rel="stylesheet" href="assets/css/arabic-fonts.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
 </head>
 <body>
     <!-- Navigation -->
@@ -102,32 +118,14 @@ if (isset($_POST['delete_treatment'])) {
             ?>
             
             <!-- Search form -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <form method="GET" action="nurse_treatments.php" class="d-flex">
-                        <div class="input-group">
-                            <input type="text" name="search" class="form-control" placeholder="Search by patient name" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
-                            <button type="submit" class="btn btn-outline-secondary">
-                                <i class="fas fa-search"></i>
-                            </button>
-                            <?php if (isset($_GET['search']) && !empty($_GET['search'])): ?>
-                                <a href="nurse_treatments.php" class="btn btn-outline-secondary">
-                                    <i class="fas fa-times"></i>
-                                </a>
-                            <?php endif; ?>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
             <!-- Treatments table -->
             <div class="table-responsive">
-                <table class="table table-striped table-sm">
+                <table id="nurseTreatmentsTable" class="table table-striped table-sm">
                     <thead>
                         <tr>
                             <th>#</th>
                             <th>Date</th>
-                            <th>Patient Name</th>
+                            <th>Patient Name / File Number</th>
                             <th>Nurse Name</th>
                             <th>Payment Status</th>
                             <th>Actions</th>
@@ -135,14 +133,10 @@ if (isset($_POST['delete_treatment'])) {
                     </thead>
                     <tbody>
                         <?php
-                        // Build query based on search
+                        // No backend search: DataTables handles searching client-side
                         $search_condition = '';
-                        if (isset($_GET['search']) && !empty($_GET['search'])) {
-                            $search = sanitize($_GET['search']);
-                            $search_condition = "AND p.name LIKE '%$search%'";
-                        }
                         
-                        $query = "SELECT nt.id, nt.treatment_date, p.name AS patient_name, nt.nurse_name, nt.payment_status
+                        $query = "SELECT nt.id, nt.treatment_date, p.name AS patient_name, p.file_number, nt.nurse_name, nt.payment_status
                                   FROM nurse_treatments nt
                                   JOIN patients p ON nt.patient_id = p.id
                                   WHERE 1=1 $search_condition
@@ -159,7 +153,7 @@ if (isset($_POST['delete_treatment'])) {
                                 echo "<tr>";
                                 echo "<td>{$row['id']}</td>";
                                 echo "<td>" . date('d-m-Y', strtotime($row['treatment_date'])) . "</td>";
-                                echo "<td>{$row['patient_name']}</td>";
+                                echo "<td>{$row['patient_name']} ({$row['file_number']})</td>";
                                 echo "<td>{$row['nurse_name']}</td>";
                                 echo "<td>$payment_badge</td>";
                                 echo "<td>
@@ -211,3 +205,13 @@ if (isset($_POST['delete_treatment'])) {
 </div>
 
 <?php include_once 'includes/footer.php'; ?>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#nurseTreatmentsTable').DataTable({
+                order: [[1, 'desc']]
+            });
+        });
+    </script>

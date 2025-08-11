@@ -107,6 +107,17 @@ $reports = executeQuery($query);
                         </a>
                     </div>
                     <div class="card-body">
+    <?php
+    // Display success or error messages
+    if (isset($_SESSION['success'])) {
+        echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+        unset($_SESSION['success']);
+    }
+    if (isset($_SESSION['error'])) {
+        echo '<div class="alert alert-danger">' . $_SESSION['error'] . '</div>';
+        unset($_SESSION['error']);
+    }
+    ?>
                         <div class="table-responsive">
                             <table id="reportsTable" class="table table-striped table-hover">
                                 <thead>
@@ -134,9 +145,13 @@ $reports = executeQuery($query);
                                             echo "<td>{$row['generated_by']}</td>";
                                             echo "<td>" . date('Y-m-d H:i', strtotime($row['created_at'])) . "</td>";
                                             echo '<td>
-                                                <a href="view_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-info me-1" title="View">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>';
+    <a href="view_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-info me-1" title="View">
+        <i class="fas fa-eye"></i>
+    </a>';
+    // WhatsApp copy button
+    $report_link = "http://142.93.208.83/Bato-Medical-Report-System/view_report.php?id=" . $row['id'];
+    $whatsapp_message = "BATO CLINIC: Your medical report is ready.\nView (valid 3 days):\n$report_link\n\nYou can also download as PDF.";
+
                                                 
                                                 // Only show edit and delete buttons for admin and doctor users
                                                 if (hasRole(['admin', 'doctor'])) {
@@ -216,5 +231,37 @@ $reports = executeQuery($query);
             });
         }
     </script>
+<!-- WhatsApp Message Modal -->
+<div class="modal fade" id="whatsappModal" tabindex="-1" aria-labelledby="whatsappModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="whatsappModalLabel">Copy WhatsApp Message</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <textarea id="whatsappMessageText" class="form-control" rows="5" readonly></textarea>
+        <small class="text-muted">Select and copy the message above (Ctrl+C or right-click > Copy).</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function showWhatsAppModalFromBtn(btn) {
+    var message = btn.getAttribute('data-message');
+    showWhatsAppModal(message);
+}
+function showWhatsAppModal(message) {
+    var textarea = document.getElementById('whatsappMessageText');
+    textarea.value = message;
+    var modal = new bootstrap.Modal(document.getElementById('whatsappModal'));
+    modal.show();
+    setTimeout(function() { textarea.select(); }, 300); // auto-select for convenience
+}
+</script>
 </body>
 </html>

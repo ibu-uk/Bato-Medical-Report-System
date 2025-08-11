@@ -28,8 +28,29 @@ if (!isset($_GET['id'])) {
 
 $reportId = sanitize($_GET['id']);
 
+// Ensure database connection is initialized
+if (!isset($conn) || !$conn) {
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    if ($conn->connect_error) {
+        die("Database connection failed: " . $conn->connect_error);
+    }
+}
+
+// Fetch patient name for logging
+$patientName = '';
+
+$stmt = $conn->prepare("SELECT p.name FROM reports r JOIN patients p ON r.patient_id = p.id WHERE r.id = ? LIMIT 1");
+if ($stmt) {
+    $stmt->bind_param("i", $reportId);
+    $stmt->execute();
+    $stmt->bind_result($patientNameResult);
+    if ($stmt->fetch()) {
+        $patientName = $patientNameResult;
+    }
+    $stmt->close();
+}
 // Log the delete activity before deleting the report
-logUserActivity('delete_report', $reportId);
+logUserActivity('delete_report', $reportId, null, $patientName);
 
 // Delete report tests first (foreign key constraint)
 $deleteTestsQuery = "DELETE FROM report_tests WHERE report_id = ?";
