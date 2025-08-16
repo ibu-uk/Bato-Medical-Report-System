@@ -4,6 +4,7 @@ session_start();
 
 // Include database configuration
 require_once 'config/database.php';
+require_once 'config/auth.php';
 
 // No authentication check needed
 

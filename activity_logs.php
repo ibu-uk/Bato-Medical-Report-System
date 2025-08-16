@@ -80,12 +80,15 @@ while ($row = $usersResult->fetch_assoc()) {
 }
 
 // Get distinct activity types for filter dropdown
-$activityTypesQuery = "SELECT DISTINCT activity_type FROM user_activity_log ORDER BY activity_type";
-$activityTypesResult = executeQuery($activityTypesQuery);
-$activityTypes = array();
-while ($row = $activityTypesResult->fetch_assoc()) {
-    $activityTypes[] = $row['activity_type'];
-}
+// Use only the specified activity types for filter and display
+$activityTypes = [
+    'login','logout','create_report','view_report','print_report',
+    'create_prescription','view_prescription','print_prescription',
+    'create_treatment','view_treatment','print_treatment',
+    'add_patient','edit_patient','delete_report','edit_report',
+    'add_prescription','delete_prescription','edit_prescription',
+    'add_nurse_treatment','edit_nurse_treatment'
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">

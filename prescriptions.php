@@ -18,7 +18,16 @@ if (isset($_POST['delete_prescription'])) {
     $prescription_id = sanitize($_POST['prescription_id']);
     // Fetch patient name for logging before deletion
     $patient_name = '';
-    $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON pr.patient_id = p.id WHERE pr.id = ? LIMIT 1");
+    global $conn;
+if (!isset($conn) || !$conn) {
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    if ($conn->connect_error) {
+        $_SESSION['error'] = "Database connection failed: " . $conn->connect_error;
+        header('Location: prescriptions.php');
+        exit;
+    }
+}
+$stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON pr.patient_id = p.id WHERE pr.id = ? LIMIT 1");
     if ($stmt) {
         $stmt->bind_param("i", $prescription_id);
         $stmt->execute();
@@ -172,41 +181,32 @@ $result = executeQuery($query);
                                 echo "<td>" . date('d-m-Y', strtotime($row['prescription_date'])) . "</td>";
                                 echo "<td>{$row['patient_name']} ({$row['file_number']})</td>";
                                 echo "<td>{$row['doctor_name']}</td>";
-                                echo "<td>
-                                        <a href='view_prescription.php?id={$row['id']}' class='btn btn-sm btn-primary me-1'>
-                                            <i class='fas fa-eye'></i> View
-                                        </a>";
-                                        if (hasRole(['admin', 'doctor'])) {
-                                            echo "<a href='edit_prescription.php?id={$row['id']}' class='btn btn-sm btn-warning me-1' title='Edit'><i class='fas fa-edit'></i> Edit</a>";
-                                        }
-                                        if (hasRole(['admin', 'doctor'])) {
-                                            echo "<button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
-                                                <i class='fas fa-trash'></i>
-                                            </button>";
-                                        }
-                                        
-                                        // Delete Modal
-                                        echo "<div class='modal fade' id='deleteModal{$row['id']}' tabindex='-1' aria-labelledby='deleteModalLabel' aria-hidden='true'>
-                                            <div class='modal-dialog'>
-                                                <div class='modal-content'>
-                                                    <div class='modal-header'>
-                                                        <h5 class='modal-title' id='deleteModalLabel'>Confirm Delete</h5>
-                                                        <button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Close'></button>
-                                                    </div>
-                                                    <div class='modal-body'>
-                                                        Are you sure you want to delete this prescription?
-                                                    </div>
-                                                    <div class='modal-footer'>
-                                                        <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button>
-                                                        <form method='POST'>
-                                                            <input type='hidden' name='prescription_id' value='{$row['id']}'>
-                                                            <button type='submit' name='delete_prescription' class='btn btn-danger'>Delete</button>
-                                                        </form>
-                                                    </div>
+                                // Start Actions column
+                                $actions = "<a href='view_prescription.php?id={$row['id']}' class='btn btn-sm btn-primary me-1'><i class='fas fa-eye'></i> View</a>";
+                                if (hasRole(['admin', 'doctor'])) {
+                                    $actions .= "<a href='edit_prescription.php?id={$row['id']}' class='btn btn-sm btn-warning me-1' title='Edit'><i class='fas fa-edit'></i> Edit</a>";
+                                    $actions .= "<button type='button' class='btn btn-sm btn-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'><i class='fas fa-trash'></i></button>";
+                                    // Delete Modal
+                                    $actions .= "<div class='modal fade' id='deleteModal{$row['id']}' tabindex='-1' aria-labelledby='deleteModalLabel' aria-hidden='true'>
+                                        <div class='modal-dialog'>
+                                            <div class='modal-content'>
+                                                <div class='modal-header'>
+                                                    <h5 class='modal-title' id='deleteModalLabel'>Confirm Delete</h5>
+                                                    <button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Close'></button>
+                                                </div>
+                                                <div class='modal-body'>Are you sure you want to delete this prescription?</div>
+                                                <div class='modal-footer'>
+                                                    <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button>
+                                                    <form method='POST'>
+                                                        <input type='hidden' name='prescription_id' value='{$row['id']}'>
+                                                        <button type='submit' name='delete_prescription' class='btn btn-danger'>Delete</button>
+                                                    </form>
                                                 </div>
                                             </div>
                                         </div>
-                                      </td>";
+                                    </div>";
+                                }
+                                echo "<td>$actions</td>";
                                 echo "</tr>";
                             }
                         } else {

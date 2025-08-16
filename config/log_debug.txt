@@ -13,3 +13,23 @@
 2025-08-10 13:55:41 LOG: view_prescription, 20, mohamed ismail
 2025-08-10 14:55:48 LOG: delete_report, 34, موضي عبدالله صقر العتيبي 9792
 2025-08-10 14:59:15 LOG: view_prescription, 20, mohamed ismail
+2025-08-16 09:21:26 LOG: add_nurse_treatment, 5, mohamed ismail
+2025-08-16 09:21:49 LOG: edit_nurse_treatment, 5, mohamed ismail
+2025-08-16 10:25:52 LOG: view_report, 38, 
+2025-08-16 09:26:18 LOG: edit_report, 38, عبدالعزيز صادق كرم
+2025-08-16 10:26:18 LOG: view_report, 38, 
+2025-08-16 10:26:40 LOG: delete_report, 38, عبدالعزيز صادق كرم
+2025-08-16 09:27:31 LOG: add_prescription, 21, عبدالعزيز صادق كرم
+2025-08-16 09:27:51 LOG: edit_prescription, 20, mohamed ismail
+2025-08-16 10:27:51 LOG: view_prescription, 20, mohamed ismail
+2025-08-16 09:29:43 LOG: delete_prescription, 20, mohamed ismail
+2025-08-16 10:37:11 LOG: view_prescription, 21, عبدالعزيز صادق كرم
+2025-08-16 09:37:33 LOG: edit_prescription, 21, عبدالعزيز صادق كرم
+2025-08-16 10:37:33 LOG: view_prescription, 21, عبدالعزيز صادق كرم
+2025-08-16 09:37:59 LOG: delete_prescription, 21, عبدالعزيز صادق كرم
+2025-08-16 10:40:37 LOG: view_report, 39, 
+2025-08-16 09:41:02 LOG: edit_report, 39, موضي عبدالله صقر العتيبي 9792
+2025-08-16 10:41:02 LOG: view_report, 39, 
+2025-08-16 09:41:15 LOG: edit_report, 39, موضي عبدالله صقر العتيبي 9792
+2025-08-16 10:41:15 LOG: view_report, 39, 
+2025-08-16 10:41:22 LOG: delete_report, 39, موضي عبدالله صقر العتيبي 9792

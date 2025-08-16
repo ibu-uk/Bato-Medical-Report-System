@@ -160,7 +160,7 @@ if (isset($_POST['delete_treatment'])) {
                                         <a href='view_nurse_treatment.php?id={$row['id']}' class='btn btn-sm btn-info me-1' title='View'>
                                             <i class='fas fa-eye'></i>
                                         </a>";
-                                        if (hasRole(['admin'])) {
+                                        if (hasRole(['admin', 'nurse'])) {
                                             echo "<a href='edit_nurse_treatment.php?id={$row['id']}' class='btn btn-sm btn-warning me-1' title='Edit'><i class='fas fa-edit'></i> Edit</a>";
                                         }
                                         if (hasRole(['admin'])) {

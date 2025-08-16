@@ -4,6 +4,7 @@ session_start();
 
 // Include database configuration
 require_once 'config/database.php';
+require_once 'config/auth.php';
 
 // Process form submission
 $message = '';
@@ -63,8 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             VALUES ('$name', '$civil_id', '$mobile', '$file_number')";
             
             if (executeInsert($insertQuery)) {
+                // Get the last inserted patient ID
+                global $conn;
+                $patient_id = $conn->insert_id;
                 // Centralized activity log
-                logUserActivity('add_patient', $civil_id, null, $name);
+                logUserActivity('add_patient', $patient_id, null, $name);
                 
                 $message = 'Patient added successfully.';
                 $messageType = 'success';
