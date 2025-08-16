@@ -17,7 +17,16 @@ if (isset($_POST['delete_treatment'])) {
     $treatment_id = sanitize($_POST['treatment_id']);
     // Fetch patient name for logging before deletion
     $patient_name = '';
-    $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p ON nt.patient_id = p.id WHERE nt.id = ? LIMIT 1");
+    global $conn;
+if (!isset($conn) || !$conn) {
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    if ($conn->connect_error) {
+        $_SESSION['error'] = "Database connection failed: " . $conn->connect_error;
+        header('Location: nurse_treatments.php');
+        exit;
+    }
+}
+$stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p ON nt.patient_id = p.id WHERE nt.id = ? LIMIT 1");
     if ($stmt) {
         $stmt->bind_param("i", $treatment_id);
         $stmt->execute();
