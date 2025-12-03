@@ -1,0 +1,465 @@
+/* Main Styles for Bato Medical Report System */
+:root {
+    --sidebar-width: 250px;
+    --sidebar-collapsed-width: 70px;
+    --sidebar-bg: #2c3e50;
+    --sidebar-hover: #34495e;
+    --sidebar-active: #3498db;
+    --text-color: #ecf0f1;
+    --text-muted: #bdc3c7;
+    --transition-speed: 0.3s;
+}
+
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transition: all var(--transition-speed) ease;
+    padding-left: var(--sidebar-width);
+}
+
+/* Sidebar Styles */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: var(--sidebar-bg);
+    color: var(--text-color);
+    transition: all var(--transition-speed) ease;
+    z-index: 1000;
+    overflow-y: auto;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+    padding: 20px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+}
+
+.menu-toggle {
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: var(--text-color);
+}
+
+.sidebar-menu {
+    padding: 15px 0;
+}
+
+.sidebar .nav-link {
+    color: var(--text-color);
+    padding: 12px 20px;
+    margin: 2px 10px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.sidebar .nav-link i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar .nav-link:hover {
+    background: var(--sidebar-hover);
+    color: white;
+    text-decoration: none;
+}
+
+.sidebar .nav-link.active {
+    background: var(--sidebar-active);
+    color: white;
+}
+
+.sidebar .nav-link .badge {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Submenu Styles */
+.submenu {
+    padding-left: 15px;
+    list-style: none;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.submenu.show {
+    max-height: 500px; /* Adjust based on your content */
+}
+
+.submenu .nav-link {
+    padding: 8px 15px 8px 30px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.submenu .nav-link:hover,
+.submenu .nav-link.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.has-submenu {
+    position: relative;
+}
+
+.dropdown-icon {
+    position: absolute;
+    right: 15px;
+    transition: transform 0.3s ease;
+}
+
+.has-submenu[aria-expanded="true"] .dropdown-icon {
+    transform: rotate(90deg);
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+    padding: 15px;
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.important-notes h5 {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.note {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.note p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-color);
+}
+
+.note small {
+    font-size: 0.75rem;
+}
+
+/* Collapsed Sidebar */
+body.sidebar-collapsed {
+    padding-left: var(--sidebar-collapsed-width);
+}
+
+.sidebar-collapsed .sidebar {
+    width: var(--sidebar-collapsed-width);
+    overflow: hidden;
+}
+
+.sidebar-collapsed .sidebar-header h3,
+.sidebar-collapsed .nav-link span,
+.sidebar-collapsed .dropdown-icon,
+.sidebar-collapsed .sidebar-footer {
+    display: none;
+}
+
+.sidebar-collapsed .sidebar-header {
+    padding: 20px 0;
+    justify-content: center;
+}
+
+.sidebar-collapsed .nav-link {
+    padding: 15px;
+    justify-content: center;
+}
+
+.sidebar-collapsed .nav-link i {
+    margin-right: 0;
+    font-size: 1.2rem;
+}
+
+.sidebar-collapsed .submenu {
+    display: none;
+}
+
+/* Top Navigation */
+.top-navbar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: var(--sidebar-width);
+    height: 60px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    z-index: 800;
+    padding: 0.5rem 1.5rem;
+    transition: all var(--transition-speed) ease;
+}
+
+.sidebar-collapsed .top-navbar {
+    left: var(--sidebar-collapsed-width);
+}
+
+.top-navbar .dropdown-menu {
+    margin-top: 0.5rem;
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+}
+
+.top-navbar .dropdown-item {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.top-navbar .dropdown-divider {
+    margin: 0.25rem 0;
+}
+
+.top-navbar .nav-link {
+    color: #333 !important;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.top-navbar .nav-link i {
+    font-size: 1.25rem;
+}
+
+/* Main Content */
+.main-content {
+    margin-top: 60px;
+    margin-left: var(--sidebar-width);
+    padding: 20px;
+    min-height: calc(100vh - 60px);
+    transition: all var(--transition-speed) ease;
+}
+
+.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .top-navbar {
+        left: 0;
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    body.sidebar-collapsed .main-content {
+        margin-left: 0;
+    }
+    
+    .sidebar {
+        transform: translateX(-100%);
+        z-index: 1000;
+    }
+    
+    body.sidebar-collapsed .sidebar {
+        transform: translateX(0);
+        width: 250px;
+    }
+    
+    body.sidebar-collapsed .main-content::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 900;
+        display: none;
+    }
+    
+    body.sidebar-collapsed .main-content::before {
+        display: block;
+    }
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    background-color: #6c757d !important; /* Darker gray navbar */
+}
+
+.navbar-dark .navbar-brand,
+.navbar-dark .nav-link {
+    color: #ffffff !important; /* White text for better contrast on darker background */
+}
+
+.navbar-dark .nav-link:hover {
+    color: #f8f9fa !important; /* Slightly lighter on hover */
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.navbar-dark .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(52, 58, 64, 1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}
+
+.navbar-dark .navbar-toggler {
+    border-color: rgba(52, 58, 64, 0.5) !important;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 1.5rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.card-header {
+    font-weight: 600;
+    background-color: #6c757d !important; /* Darker gray card headers */
+    color: #ffffff !important; /* White text for better contrast */
+    border-bottom: 1px solid #5a6268;
+}
+
+.btn-primary {
+    background-color: #495057;
+    border-color: #495057;
+}
+
+.btn-primary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+
+.btn-success {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.btn-success:hover {
+    background-color: #157347;
+    border-color: #146c43;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #bb2d3b;
+    border-color: #b02a37;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #ced4da;
+    box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.25);
+}
+
+.test-row {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #dee2e6;
+}
+
+/* PDF Report Styles */
+.report-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.report-logo {
+    max-width: 200px;
+    margin-bottom: 10px;
+}
+
+.report-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.report-table th, .report-table td {
+    border: 1px solid #dee2e6;
+    padding: 8px;
+}
+
+.report-table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.report-footer {
+    margin-top: 30px;
+    text-align: center;
+    font-size: 12px;
+}
+
+.doctor-signature {
+    margin-top: 50px;
+    text-align: right;
+}
+
+.doctor-signature img {
+    max-width: 150px;
+    margin-bottom: 10px;
+}
+
+.doctor-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.doctor-position {
+    font-style: italic;
+}
+
+/* Patient Search Highlight Styles */
+.highlighted-option {
+    background-color: #ffffa0 !important;
+    font-weight: bold;
+}
+
+/* Make dropdown options more readable */
+select option {
+    padding: 8px;
+}
+
+/* Print styles */
+@media print {
+    body {
+        background-color: #fff;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+    
+    .container {
+        width: 100%;
+        max-width: 100%;
+    }
+}
