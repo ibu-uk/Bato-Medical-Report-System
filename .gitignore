@@ -1,4 +1,3 @@
-config/database.php
 .env
 vendor/
 .idea/
