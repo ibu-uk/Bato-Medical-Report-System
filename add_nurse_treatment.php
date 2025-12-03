@@ -107,52 +107,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="assets/css/arabic-fonts.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">Bato Medical Report System</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.php">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="reports.php">Medical Reports</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="prescriptions.php"><i class="fas fa-prescription"></i> Prescriptions</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="nurse_treatments.php"><i class="fas fa-user-nurse"></i> Nurse Treatments</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="manage_doctors.php">Doctors</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="manage_test_types.php"><i class="fas fa-vial"></i> Test Types</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="add_patient.php"><i class="fas fa-user-plus"></i> Add Patient</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
 <div class="container mt-4">
+    <!-- Back button at the top -->
+    <div class="mb-3">
+        <a href="nurse_treatments.php" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Treatment Records
+        </a>
+    </div>
     <div class="row">
         <!-- Main content -->
         <main class="col-12">
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h1 class="h2">New Nurse Treatment Record</h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <a href="nurse_treatments.php" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Treatment Records
-                    </a>
-                </div>
             </div>
             
             <?php
