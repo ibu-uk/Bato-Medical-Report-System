@@ -170,32 +170,44 @@ requireLogin();
         </div>
 
         <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">
+            <div class="col-12">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
                         <h4 class="mb-0">Medical Report Generator</h4>
                     </div>
-                    <div class="card-body">
-                        <form id="reportForm" action="generate_report.php" method="post">
+                    <div class="card-body p-0">
+                        <form id="reportForm" action="generate_report.php" method="post" class="p-3">
                             <!-- Patient Information Section -->
-                            <div class="card mb-4">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Patient Information</h5>
+                            <div class="card border-0 mb-4">
+                                <div class="card-header bg-light py-2">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-user-circle me-2 text-primary"></i>Patient Information
+                                    </h5>
                                 </div>
-                                <div class="card-body">
-                                    <div class="row mb-3">
-                                        <div class="col-md-6">
-                                            <label for="patient_search" class="form-label">Search Patient</label>
-                                            <div class="input-group mb-2">
-                                                <input type="text" class="form-control" id="patient_search" placeholder="Search by name, mobile or civil ID" autocomplete="off">
-                                                <button class="btn btn-outline-secondary" type="button" id="clear_search">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
+                                <div class="card-body p-3">
+                                    <div class="row g-3">
+                                        <div class="col-12 col-lg-6">
+                                            <div class="position-relative">
+                                                <label for="patient_search" class="form-label small text-muted mb-1">Search Patient</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white">
+                                                        <i class="fas fa-search text-muted"></i>
+                                                    </span>
+                                                    <input type="text" class="form-control form-control-lg" id="patient_search" 
+                                                           placeholder="Search by name, mobile or ID" autocomplete="off">
+                                                    <button class="btn btn-outline-secondary" type="button" id="clear_search" 
+                                                            data-bs-toggle="tooltip" title="Clear search">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                                <div id="search_status" class="form-text small text-muted mt-1">
+                                                    <i class="fas fa-info-circle me-1"></i> Type at least 3 characters to search
+                                                </div>
                                             </div>
-                                            <div id="search_status" class="small text-muted mb-2">Type at least 3 characters to search</div>
-                                            <label for="patient" class="form-label">Select Patient</label>
-                                            <div class="input-group">
-                                                <select class="form-select" id="patient" name="patient_id" required>
+                                            
+                                            <div class="mt-3">
+                                                <label for="patient" class="form-label small text-muted mb-1">Select Patient</label>
+                                                <select class="form-select form-select-lg" id="patient" name="patient_id" required>
                                                     <option value="">-- Select Patient --</option>
                                                     <!-- Patient options will be loaded via AJAX -->
                                                 </select>
@@ -320,10 +332,40 @@ requireLogin();
     <!-- Custom JS -->
     <script src="assets/js/script.js"></script>
     
+    
     <script>
         // Mobile menu toggle
-        document.getElementById('mobileMenuToggle')?.addEventListener('click', function() {
-            document.body.classList.toggle('sidebar-collapsed');
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mobile menu toggle
+            document.getElementById('mobileMenuToggle')?.addEventListener('click', function() {
+                document.body.classList.toggle('sidebar-collapsed');
+            });
+            
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
+            // Handle card links on mobile
+            if (window.innerWidth < 768) {
+                document.querySelectorAll('.card[data-href]').forEach(card => {
+                    card.style.cursor = 'pointer';
+                    card.addEventListener('click', function() {
+                        window.location.href = this.dataset.href;
+                    });
+                });
+            }
+        });
+        
+        // Make window resizing more efficient
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            document.body.classList.add('resize-animation-stopper');
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                document.body.classList.remove('resize-animation-stopper');
+            }, 400);
         });
         
         // Close sidebar when clicking outside on mobile

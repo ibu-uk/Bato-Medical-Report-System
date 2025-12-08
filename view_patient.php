@@ -133,22 +133,11 @@ $treatments = $stmt->get_result();
 
     <!-- Main Content -->
     <div class="container">
-        <div class="row mb-4">
-            <div class="col-12">
-                <a href="patient_list.php" class="btn btn-secondary btn-back">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Patients
-                </a>
-                <h2 class="d-inline-block ms-2">
-                </h2>
-            </div>
-        </div>
-        <div class="btn-group">
-            <a href="edit_patient.php?id=<?php echo $patient_id; ?>" class="btn btn-primary">
-                <i class="fas fa-edit me-2"></i>Edit Patient
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <a href="patient_list.php" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                <span class="d-none d-sm-inline">Back to Patients</span>
             </a>
-            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deletePatientModal">
-                <i class="fas fa-trash me-2"></i>Delete Patient
-            </button>
         </div>
     </div>
 
@@ -236,7 +225,6 @@ $treatments = $stmt->get_result();
                                         <th>Date</th>
                                         <th>Report Type</th>
                                         <th>Doctor</th>
-                                        <th>Findings</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -246,13 +234,9 @@ $treatments = $stmt->get_result();
                                             <td><?php echo date('M j, Y', strtotime($report['report_date'])); ?></td>
                                             <td><?php echo !empty($report['report_type']) ? sanitize($report['report_type']) : 'General'; ?></td>
                                             <td><?php echo !empty($report['doctor_name']) ? sanitize($report['doctor_name']) : 'N/A'; ?></td>
-                                            <td><?php echo !empty($report['findings']) ? substr(sanitize($report['findings']), 0, 50) . '...' : 'N/A'; ?></td>
                                             <td>
                                                 <a href="view_report.php?id=<?php echo $report['id']; ?>" class="btn btn-sm btn-info" title="View">
                                                     <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="print_report.php?id=<?php echo $report['id']; ?>" class="btn btn-sm btn-secondary" title="Print">
-                                                    <i class="fas fa-print"></i>
                                                 </a>
                                             </td>
                                         </tr>
@@ -302,9 +286,6 @@ $treatments = $stmt->get_result();
                                                 <a href="view_prescription.php?id=<?php echo $prescription['id']; ?>" class="btn btn-sm btn-info" title="View">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="print_prescription.php?id=<?php echo $prescription['id']; ?>" class="btn btn-sm btn-secondary" title="Print">
-                                                    <i class="fas fa-print"></i>
-                                                </a>
                                             </td>
                                         </tr>
                                     <?php endwhile; ?>
@@ -353,9 +334,6 @@ $treatments = $stmt->get_result();
                                                 <a href="view_treatment.php?id=<?php echo $treatment['id']; ?>" class="btn btn-sm btn-info" title="View">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="print_treatment.php?id=<?php echo $treatment['id']; ?>" class="btn btn-sm btn-secondary" title="Print">
-                                                    <i class="fas fa-print"></i>
-                                                </a>
                                             </td>
                                         </tr>
                                     <?php endwhile; ?>
@@ -373,57 +351,6 @@ $treatments = $stmt->get_result();
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this patient? This action cannot be undone.</p>
-                <p class="mb-0"><strong>Patient:</strong> <?php echo sanitize($patient['name']); ?></p>
-                <p class="mb-0"><strong>File #:</strong> <?php echo sanitize($patient['file_number']); ?></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="delete_patient.php" method="POST" style="display: inline;">
-                    <input type="hidden" name="patient_id" value="<?php echo $patient_id; ?>">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash me-1"></i> Delete Patient
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Patient Confirmation Modal -->
-<div class="modal fade" id="deletePatientModal" tabindex="-1" aria-labelledby="deletePatientModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deletePatientModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this patient? This action cannot be undone.</p>
-                <p class="fw-bold">This will permanently delete all records associated with this patient, including reports, prescriptions, and treatments.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>Cancel</button>
-                <form action="delete_patient.php" method="POST" style="display: inline;">
-                    <input type="hidden" name="patient_id" value="<?php echo $patient_id; ?>">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash me-2"></i>Delete Patient
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- JavaScript Libraries -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -433,14 +360,6 @@ $treatments = $stmt->get_result();
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-    
-    // Initialize delete modals
-    var deletePatientModal = document.getElementById('deletePatientModal');
-    if (deletePatientModal) {
-        deletePatientModal.addEventListener('show.bs.modal', function (event) {
-            // Any additional logic when modal is shown
-        });
-    }
 </script>
 
 <?php

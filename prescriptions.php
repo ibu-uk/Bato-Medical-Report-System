@@ -212,11 +212,78 @@ $result = executeQuery($query);
                 </table>
             </div>
 
-        </main>
-    </div>
-</div>
+            <!-- Pagination -->
+            <?php if ($total_pages > 1): ?>
+                <nav aria-label="Page navigation" class="mt-4">
+                    <style>
+                        .pagination .page-link {
+                            color: #212529;
+                            border-color: #dee2e6;
+                        }
+                        .pagination .page-item.active .page-link {
+                            background-color: #212529;
+                            border-color: #212529;
+                            color: #fff;
+                        }
+                        .pagination .page-item:not(.active) .page-link:hover {
+                            background-color: #f8f9fa;
+                        }
+                        .pagination {
+                            margin-bottom: 0;
+                        }
+                    </style>
+                    <ul class="pagination justify-content-center">
+                        <?php if ($page > 1): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<?php echo $page - 1; ?>">Previous</a>
+                            </li>
+                        <?php endif; ?>
 
-                    </div> <!-- End card-body -->
+                        <?php
+                        $start = max(1, $page - 2);
+                        $end = min($total_pages, $page + 2);
+                        
+                        // Show first page with ellipsis if needed
+                        if ($start > 1) {
+                            echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                            if ($start > 2) {
+                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                            }
+                        }
+                        
+                        for ($i = $start; $i <= $end; $i++):
+                        ?>
+                            <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
+                                <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                            </li>
+                        <?php 
+                        endfor; 
+                        
+                        // Show last page with ellipsis if needed
+                        if ($end < $total_pages) {
+                            if ($end < $total_pages - 1) {
+                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                            }
+                            echo '<li class="page-item"><a class="page-link" href="?page='.$total_pages.'">'.$total_pages.'</a></li>';
+                        }
+                        ?>
+
+                        <?php if ($page < $total_pages): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<?php echo $page + 1; ?>">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<?php echo $total_pages; ?>">Last</a>
+                            </li>
+                        <?php endif; ?>
+                    </ul>
+                </nav>
+            <?php endif; ?>
+
+        </div> <!-- End card-body -->
                 </div> <!-- End card -->
             </div> <!-- End col-12 -->
         </div> <!-- End row -->
@@ -238,11 +305,13 @@ $result = executeQuery($query);
                 return new Date(parts[2], parts[1] - 1, parts[0]);
             }
 
+            // Disable DataTables pagination since we're using server-side pagination
             $('#prescriptionsTable').DataTable({
-                responsive: true,
-                pageLength: 25,
+                paging: false,
+                searching: true,
+                info: false,
                 order: [[1, 'desc']], // Sort by date column (index 1) in descending order by default
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"row"<"col-sm-12"tr>><"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
                 language: {
                     search: "_INPUT_",
                     searchPlaceholder: "Search prescriptions..."

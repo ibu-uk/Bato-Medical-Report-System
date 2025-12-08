@@ -58,21 +58,44 @@ $reports = executeQuery($query);
             padding: 0.25rem 0.5rem;
         }
         /* Table row styling */
+        #reportsTable {
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            overflow: hidden;
+        }
         #reportsTable tbody tr {
-            background-color: transparent !important;
+            background-color: #fff !important;
             transition: background-color 0.2s;
+            border-bottom: 1px solid #dee2e6;
+        }
+        #reportsTable tbody tr:not(:last-child) {
+            border-bottom: 1px solid #c6c8ca;
         }
         #reportsTable tbody tr:hover {
-            background-color: #f2f2f2 !important;
+            background-color: #f8f9fa !important;
         }
-        /* Remove DataTables default row hover */
-        .table-hover tbody tr:hover td, .table-hover tbody tr:hover th {
-            background-color: transparent !important;
+        /* Style for table cells */
+        #reportsTable td, 
+        #reportsTable th {
+            padding: 12px 15px;
+            vertical-align: middle;
+            border-right: 1px solid #dee2e6;
+        }
+        #reportsTable td:last-child, 
+        #reportsTable th:last-child {
+            border-right: none;
         }
         /* Style for table header */
         #reportsTable thead th {
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
+            background-color: #e9ecef;
+            border-bottom: 2px solid #c6c8ca;
+            font-weight: 600;
+            color: #495057;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
         }
         /* Remove blue highlight from pagination */
         .page-item.active .page-link {
@@ -139,16 +162,10 @@ $reports = executeQuery($query);
                                             echo "<td>{$row['doctor_name']}</td>";
                                             echo "<td>{$row['generated_by']}</td>";
                                             echo "<td>" . date('Y-m-d H:i', strtotime($row['created_at'])) . "</td>";
-                                            $report_link = "http://142.93.208.83/Bato-Medical-Report-System/view_report.php?id=" . $row['id'];
-                                            $whatsapp_message = "BATO CLINIC: Your medical report is ready.\nView (valid 3 days):\n$report_link\n\nYou can also download as PDF.";
-                                            
                                             echo '<td class="action-buttons">
                                                 <a href="view_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-primary" title="View">
                                                     <i class="fas fa-eye"></i>
-                                                </a>
-                                                <button onclick="showWhatsAppModal(`' . addslashes($whatsapp_message) . '`)" class="btn btn-sm btn-outline-success" title="Share via WhatsApp">
-                                                    <i class="fab fa-whatsapp"></i>
-                                                </button>';
+                                                </a>';
                                             
                                             // Only show edit and delete buttons for admin and doctor users
                                             if (hasRole(['admin', 'doctor'])) {
@@ -193,24 +210,6 @@ $reports = executeQuery($query);
         </div>
     </div>
 
-    <!-- WhatsApp Message Modal -->
-    <div class="modal fade" id="whatsappModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Copy WhatsApp Message</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <textarea id="whatsappMessageText" class="form-control" rows="5" readonly></textarea>
-                    <small class="text-muted">Select and copy the message above (Ctrl+C or right-click > Copy).</small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -261,16 +260,6 @@ $reports = executeQuery($query);
             }
         }
         
-        function showWhatsAppModal(message) {
-            var textarea = document.getElementById('whatsappMessageText');
-            textarea.value = message;
-            var modal = new bootstrap.Modal(document.getElementById('whatsappModal'));
-            modal.show();
-            setTimeout(function() { 
-                textarea.select(); 
-                document.execCommand('copy');
-            }, 300);
-        }
     </script>
 </body>
 </html>
