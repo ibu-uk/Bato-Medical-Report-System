@@ -64,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Clear form
             $_POST = [];
+            $name = $civil_id = $mobile = $file_number = '';
             
         } catch (Exception $e) {
             $message = '<div class="alert alert-danger">
