@@ -106,7 +106,9 @@ if (password_verify($password, $user['password'])) {
     <link rel="stylesheet" href="assets/css/style.css">
     <style>
         body {
-            background-color: #f8f9fa;
+            /* Clinic background image - full screen cover */
+            background: #f8f9fa url('assets/images/bato clinic.png') no-repeat center center fixed;
+            background-size: cover;
             height: 100vh;
             display: flex;
             align-items: center;
