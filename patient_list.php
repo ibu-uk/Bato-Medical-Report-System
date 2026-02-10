@@ -32,10 +32,10 @@ $params = [];
 $types = '';
 
 if (!empty($search)) {
-    $where[] = "(p.name LIKE ? OR p.file_number LIKE ? OR p.mobile LIKE ?)";
+    $where[] = "(p.name LIKE ? OR p.file_number LIKE ? OR p.mobile LIKE ? OR p.civil_id LIKE ?)";
     $search_param = "%$search%";
-    $params = array_merge($params, [&$search_param, &$search_param, &$search_param]);
-    $types .= 'sss';
+    $params = array_merge($params, [&$search_param, &$search_param, &$search_param, &$search_param]);
+    $types .= 'ssss';
 }
 
 // Add filter condition
@@ -243,7 +243,7 @@ $result = $stmt->get_result();
                                     <option value="with_prescriptions" <?php echo $filter === 'with_prescriptions' ? 'selected' : ''; ?>>With Prescriptions</option>
                                     <option value="with_treatments" <?php echo $filter === 'with_treatments' ? 'selected' : ''; ?>>With Treatments</option>
                                 </select>
-                                <input type="text" name="search" class="form-control" placeholder="Search by name, file number, or phone..." value="<?php echo htmlspecialchars($search); ?>">
+                                <input type="text" name="search" class="form-control" placeholder="Search by name, file number, civil ID, or phone..." value="<?php echo htmlspecialchars($search); ?>">
                                 <button class="btn btn-outline-secondary" type="submit">
                                     <i class="fas fa-search"></i> Search
                                 </button>
@@ -267,6 +267,7 @@ $result = $stmt->get_result();
                                 <tr>
                                     <th>File #</th>
                                     <th>Patient Name</th>
+                                    <th>Civil ID</th>
                                     <th>Mobile</th>
                                     <th>Reports</th>
                                     <th>Prescriptions</th>
@@ -284,6 +285,7 @@ $result = $stmt->get_result();
                                                     <?php echo htmlspecialchars($row['name']); ?>
                                                 </a>
                                             </td>
+                                            <td><?php echo htmlspecialchars($row['civil_id']); ?></td>
                                             <td class="d-none d-md-table-cell"><?php echo !empty($row['mobile']) ? htmlspecialchars($row['mobile']) : 'N/A'; ?></td>
                                             <td class="text-center">
                                                 <span class="badge bg-info"><?php echo $row['report_count']; ?></span>
