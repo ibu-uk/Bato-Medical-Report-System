@@ -558,6 +558,23 @@ $result = $stmt->get_result();
         }
 
         $(document).ready(function() {
+            // Override DataTables error handling to show friendly message
+            $.fn.dataTable.ext.errMode = function(settings, helpPage, message) {
+                // Show a friendly message instead of an alert
+                const friendlyAlert = `
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No matching records found. Try adjusting your search terms.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+                $('.main-content .container-fluid').prepend(friendlyAlert);
+                // Auto-dismiss after 5 seconds
+                setTimeout(() => {
+                    $('.alert').fadeOut();
+                }, 5000);
+            };
+            
             // Handle window resize
             $(window).on('resize', updateMobileView);
             
