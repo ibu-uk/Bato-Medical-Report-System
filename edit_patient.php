@@ -60,8 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             // Update patient
-            $updateQuery = "UPDATE patients SET name = ?, civil_id = ?, mobile = ?, file_number = ?, updated_at = NOW() WHERE id = ?";
+            $updateQuery = "UPDATE patients SET name = ?, civil_id = ?, mobile = ?, file_number = ? WHERE id = ?";
             $updateStmt = $conn->prepare($updateQuery);
+            if ($updateStmt === false) {
+                throw new Exception("Prepare failed: " . $conn->error . " SQL: " . $updateQuery);
+            }
             $updateStmt->bind_param('ssssi', $name, $civil_id, $mobile, $file_number, $patient_id);
             
             if ($updateStmt->execute()) {
