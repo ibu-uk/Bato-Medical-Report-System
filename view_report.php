@@ -271,6 +271,10 @@ function sanitizeFilename($string) {
                         <td style="padding: 2px;">: <?php echo $fileNumber; ?></td>
                     </tr>
                     <tr style="font-size: 0.9rem; line-height: 1.2;">
+                        <th style="padding: 2px;">Report Date</th>
+                        <td style="padding: 2px;">: <?php echo $visitDate; ?></td>
+                    </tr>
+                    <tr style="font-size: 0.9rem; line-height: 1.2;">
                         <th style="padding: 2px;">Printed At</th>
                         <td style="padding: 2px;">: <?php echo $printedDate; ?></td>
                     </tr>
