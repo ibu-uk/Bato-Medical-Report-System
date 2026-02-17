@@ -413,16 +413,37 @@ $reports = executeQuery($query);
         });
     }
 
-    // Helper function to copy text to clipboard
+    // Helper function to copy text to clipboard (with fallback when navigator.clipboard is unavailable)
     function copyToClipboard(elementId) {
         const element = document.getElementById(elementId);
+        if (!element) return;
+
         const text = element.value;
-        
-        navigator.clipboard.writeText(text).then(() => {
-            showToast('Copied to clipboard!');
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-            // Fallback for older browsers
+
+        // Prefer modern Clipboard API when available
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    showToast('Copied to clipboard!');
+                })
+                .catch(err => {
+                    console.error('Failed to copy with Clipboard API:', err);
+                    // Fallback for browsers where writeText fails
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        showToast('Copied to clipboard!');
+                    } catch (e) {
+                        console.error('Fallback copy failed:', e);
+                        showToast('Failed to copy. Please try again.', true);
+                    }
+                    document.body.removeChild(textarea);
+                });
+        } else {
+            // Older browsers / non-secure origins: use execCommand directly
             const textarea = document.createElement('textarea');
             textarea.value = text;
             document.body.appendChild(textarea);
@@ -435,7 +456,7 @@ $reports = executeQuery($query);
                 showToast('Failed to copy. Please try again.', true);
             }
             document.body.removeChild(textarea);
-        });
+        }
     }
 
     // Initialize when document is ready
