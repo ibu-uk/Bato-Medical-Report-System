@@ -649,9 +649,9 @@ function sanitizeFilename($string) {
                                 
                                 <div class="mb-3">
                                     <label class="form-label"><strong>Secure URL:</strong></label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" value="${url}" readonly id="secureUrlInput">
-                                        <button class="btn btn-outline-primary" type="button" onclick="copySecureLink()">
+                                    <div class="input-group mb-3">
+                                    <input type="text" class="form-control" value="${url}" readonly id="secureUrlInput">
+                                    <button class="btn btn-outline-primary" type="button" onclick="copySecureLink(this)">
                                             <i class="fas fa-copy"></i> Copy
                                         </button>
                                     </div>
@@ -661,7 +661,7 @@ function sanitizeFilename($string) {
                                     <label class="form-label"><strong>Access Token:</strong></label>
                                     <div class="input-group">
                                         <input type="text" class="form-control" value="${token}" readonly id="secureTokenInput">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="copyToken()">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copyToken(this)">
                                             <i class="fas fa-copy"></i> Copy
                                         </button>
                                     </div>
@@ -696,36 +696,61 @@ function sanitizeFilename($string) {
             modal.show();
         }
         
+        // Helper to show temporary "Copied" state on a button
+        function showCopiedState(button) {
+            if (!button) return;
+            var originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            setTimeout(function() {
+                button.innerHTML = originalText;
+            }, 2000);
+        }
+
         // Copy secure link function
-        function copySecureLink() {
+        function copySecureLink(button) {
             var urlInput = document.getElementById('secureUrlInput');
-            urlInput.select();
-            urlInput.setSelectionRange(0, 99999);
-            
-            navigator.clipboard.writeText(urlInput.value).then(function() {
-                var btn = event.target;
-                var originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                }, 2000);
-            });
+            if (!urlInput) return;
+
+            // Prefer modern Clipboard API when available
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                navigator.clipboard.writeText(urlInput.value)
+                    .then(function() {
+                        showCopiedState(button);
+                    })
+                    .catch(function() {
+                        // Fallback if writeText fails
+                        urlInput.select();
+                        document.execCommand('copy');
+                        showCopiedState(button);
+                    });
+            } else {
+                // Fallback for browsers/environments without navigator.clipboard
+                urlInput.select();
+                document.execCommand('copy');
+                showCopiedState(button);
+            }
         }
         
         // Copy token function
-        function copyToken() {
+        function copyToken(button) {
             var tokenInput = document.getElementById('secureTokenInput');
-            tokenInput.select();
-            tokenInput.setSelectionRange(0, 99999);
-            
-            navigator.clipboard.writeText(tokenInput.value).then(function() {
-                var btn = event.target;
-                var originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                }, 2000);
-            });
+            if (!tokenInput) return;
+
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                navigator.clipboard.writeText(tokenInput.value)
+                    .then(function() {
+                        showCopiedState(button);
+                    })
+                    .catch(function() {
+                        tokenInput.select();
+                        document.execCommand('copy');
+                        showCopiedState(button);
+                    });
+            } else {
+                tokenInput.select();
+                document.execCommand('copy');
+                showCopiedState(button);
+            }
         }
         
         // Test secure link function
