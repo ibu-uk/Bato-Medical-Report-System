@@ -11,25 +11,88 @@ require_once 'config/database.php';
 // Include authentication helpers
 require_once 'config/auth.php';
 
-// Require login to access this page
-requireLogin();
+// Include secure links functions
+require_once 'config/secure_links.php';
 
-// Check if report ID is provided
-if (!isset($_GET['id'])) {
+// Check if token or ID is provided
+$token = isset($_GET['token']) ? $_GET['token'] : '';
+$doc = isset($_GET['doc']) ? $_GET['doc'] : '';
+$reportId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+// Check if user is logged in as staff (admin/doctor)
+$isStaff = isset($_SESSION['user_id']) && (hasRole(['admin']) || hasRole(['doctor']));
+
+// This will hold the patient ID when access is via token (patients)
+$patientId = null;
+
+if ($isStaff && $reportId > 0) {
+    // Staff access: open directly by report ID, no token/doc required
+    // $patientId stays null; we won't restrict by patient in the query
+} elseif (!empty($token) && !empty($doc)) {
+    // Patient access: validate token and doc
+    $tokenData = validateReportToken($token);
+    if (!$tokenData) {
+        die('Access denied: Invalid or expired token');
+    }
+
+    // Decode the encrypted document ID
+    $decoded = base64_decode($doc);
+    if ($decoded === false) {
+        die('Access denied: Invalid document reference');
+    }
+
+    // Extract report ID and patient ID from decoded data
+    $parts = explode('_', $decoded);
+    if (count($parts) !== 2) {
+        die('Access denied: Invalid document reference');
+    }
+
+    $reportId = (int)$parts[0];
+    $decodedPatientId = (int)$parts[1];
+
+    // Get patient ID from validated token
+    $patientId = (int)$tokenData['patient_id'];
+
+    // Verify the decoded patient ID matches the token's patient ID
+    if ($decodedPatientId !== $patientId) {
+        die('Access denied: Document does not belong to this patient');
+    }
+} else {
+    // No valid staff ID or token+doc provided
     header("Location: index.php");
     exit;
 }
 
-$reportId = sanitize($_GET['id']);
+// Create database connection
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
 
 // Get report details
-$reportQuery = "SELECT r.*, p.name as patient_name, p.civil_id, p.mobile, p.file_number,
-                d.name as doctor_name, d.position as doctor_position, d.signature_image_path
-                FROM reports r
-                JOIN patients p ON r.patient_id = p.id
-                JOIN doctors d ON r.doctor_id = d.id
-                WHERE r.id = '$reportId'";
-$reportResult = executeQuery($reportQuery);
+// For staff: load by report ID only
+// For patients: ensure report belongs to the token's patient
+if ($isStaff && $reportId > 0) {
+    $reportQuery = "SELECT r.*, p.name as patient_name, p.civil_id, p.mobile, p.file_number,
+                    d.name as doctor_name, d.position as doctor_position, d.signature_image_path
+                    FROM reports r
+                    JOIN patients p ON r.patient_id = p.id
+                    JOIN doctors d ON r.doctor_id = d.id
+                    WHERE r.id = ?";
+    $stmt = $conn->prepare($reportQuery);
+    $stmt->bind_param("i", $reportId);
+} else {
+    $reportQuery = "SELECT r.*, p.name as patient_name, p.civil_id, p.mobile, p.file_number,
+                    d.name as doctor_name, d.position as doctor_position, d.signature_image_path
+                    FROM reports r
+                    JOIN patients p ON r.patient_id = p.id
+                    JOIN doctors d ON r.doctor_id = d.id
+                    WHERE r.id = ? AND r.patient_id = ?";
+    $stmt = $conn->prepare($reportQuery);
+    $stmt->bind_param("ii", $reportId, $patientId);
+}
+$stmt->execute();
+$reportResult = $stmt->get_result();
 
 if (!$reportResult || $reportResult->num_rows === 0) {
     header("Location: index.php");
@@ -208,11 +271,14 @@ function sanitizeFilename($string) {
     <div class="container-fluid no-print">
         <div class="row mb-3">
             <div class="col-12">
-                <a href="reports.php" class="btn btn-secondary btn-back">
-                    <i class="fas fa-arrow-left"></i> Back to Reports
-                </a>
+                <?php if ($isStaff && empty($token)): ?>
+                    <a href="reports.php" class="btn btn-secondary me-2">
+                        <i class="fas fa-arrow-left"></i> Back to Reports
+                    </a>
+                <?php endif; ?>
+
                 <button onclick="printReport()" class="btn btn-primary">
-                    <i class="fas fa-print"></i> Print Report
+                    <i class="fas fa-print"></i> Save as PDF
                 </button>
                 <?php 
                 // Log print activity when button is clicked
@@ -460,7 +526,7 @@ function sanitizeFilename($string) {
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Script to handle print/save as PDF with custom filename -->
+    <!-- Script to handle print/save as PDF and secure link generation -->
     <script>
         // Custom print function to suggest filename when saving as PDF
         function printReport() {
@@ -474,7 +540,7 @@ function sanitizeFilename($string) {
             var originalTitle = document.title;
             document.title = suggestedFilename;
             
-            // Log the print activity
+            // Log print activity
             fetch('log_activity.php?type=print_report&id=<?php echo $reportId; ?>', {
                 method: 'GET',
                 credentials: 'same-origin'
@@ -489,6 +555,190 @@ function sanitizeFilename($string) {
             }, 100);
             
             return true;
+        }
+        
+        // Generate secure link function
+        function generateSecureLink() {
+            var reportId = <?php echo $reportId; ?>;
+            var patientId = <?php echo $report['patient_id']; ?>;
+            
+            console.log('Generating secure link...', {reportId, patientId});
+            
+            // Show loading state
+            var btn = event.target;
+            var originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            btn.disabled = true;
+            
+            // Send request to generate secure link
+            fetch('generate_secure_link_clean.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'report_id=' + reportId + '&patient_id=' + patientId
+            })
+            .then(response => {
+                console.log('Response received:', response);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data received:', data);
+                if (data.success) {
+                    // Show success modal with link
+                    showSecureLinkModal(data.url, data.token, data.expiry);
+                    logUserActivity('generate_secure_link', reportId);
+                } else {
+                    // Show detailed error information
+                    let errorMsg = data.message;
+                    if (data.debug_info) {
+                        errorMsg += '\n\nDebug Info:\n';
+                        errorMsg += 'Patient ID: ' + data.debug_info.patient_id + '\n';
+                        errorMsg += 'Report ID: ' + data.debug_info.report_id + '\n';
+                        errorMsg += 'Report File: ' + data.debug_info.attempted_file + '\n';
+                        errorMsg += 'File Exists: ' + (data.debug_info.file_exists ? 'Yes' : 'No');
+                    }
+                    console.error('Error details:', data);
+                    alert('Error: ' + errorMsg);
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                alert('Error generating secure link: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button state
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+        
+        // Show secure link modal
+        function showSecureLinkModal(url, token, expiry) {
+            // Remove any existing modal
+            var existingModal = document.getElementById('secureLinkModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Create modal HTML
+            var modalHtml = `
+                <div class="modal fade show" id="secureLinkModal" style="display: block; background: rgba(0,0,0,0.5);">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-shield-alt me-2"></i>
+                                    Patient Secure Link Generated
+                                </h5>
+                                <button type="button" class="btn-close" onclick="closeSecureLinkModal()"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-success">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    <strong>Success!</strong> Patient dashboard link has been generated.
+                                </div>
+                                
+                                <p><strong>Patient can access:</strong></p>
+                                <ul>
+                                    <li>All their medical reports (old and new)</li>
+                                    <li>Complete report history</li>
+                                    <li>Individual report details</li>
+                                    <li>Print any report</li>
+                                </ul>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label"><strong>Secure URL:</strong></label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" value="${url}" readonly id="secureUrlInput">
+                                        <button class="btn btn-outline-primary" type="button" onclick="copySecureLink()">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label"><strong>Access Token:</strong></label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" value="${token}" readonly id="secureTokenInput">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copyToken()">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <p><strong>Expires:</strong> ${expiry}</p>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> 
+                                    This link will never expire and gives access to all patient reports
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-primary" onclick="testSecureLink('${url}')">
+                                    <i class="fas fa-external-link-alt me-1"></i>
+                                    Test Link
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="closeSecureLinkModal()">
+                                    <i class="fas fa-times me-1"></i>
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Initialize Bootstrap modal
+            var modal = new bootstrap.Modal(document.getElementById('secureLinkModal'));
+            modal.show();
+        }
+        
+        // Copy secure link function
+        function copySecureLink() {
+            var urlInput = document.getElementById('secureUrlInput');
+            urlInput.select();
+            urlInput.setSelectionRange(0, 99999);
+            
+            navigator.clipboard.writeText(urlInput.value).then(function() {
+                var btn = event.target;
+                var originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+        
+        // Copy token function
+        function copyToken() {
+            var tokenInput = document.getElementById('secureTokenInput');
+            tokenInput.select();
+            tokenInput.setSelectionRange(0, 99999);
+            
+            navigator.clipboard.writeText(tokenInput.value).then(function() {
+                var btn = event.target;
+                var originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+        
+        // Test secure link function
+        function testSecureLink(url) {
+            window.open(url, '_blank');
+        }
+        
+        // Close modal function
+        function closeSecureLinkModal() {
+            var modal = document.getElementById('secureLinkModal');
+            if (modal) {
+                modal.remove();
+            }
         }
         
         // Initialize when the document is loaded

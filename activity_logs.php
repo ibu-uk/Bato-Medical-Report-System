@@ -87,7 +87,8 @@ $activityTypes = [
     'create_treatment','view_treatment','print_treatment',
     'add_patient','edit_patient','delete_report','edit_report',
     'add_prescription','delete_prescription','edit_prescription',
-    'add_nurse_treatment','edit_nurse_treatment'
+    'add_nurse_treatment','edit_nurse_treatment',
+    'generate_link'
 ];
 ?>
 <!DOCTYPE html>
@@ -160,8 +161,11 @@ $activityTypes = [
                             </div>
                         </div>
                         <div class="col-md-2 mb-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
+                            <button type="submit" class="btn btn-primary w-100 me-2">
                                 <i class="fas fa-search"></i> Apply Filters
+                            </button>
+                            <button type="button" class="btn btn-danger w-100" onclick="exportToPDF()">
+                                <i class="fas fa-file-pdf"></i> Export PDF
                             </button>
                         </div>
                     </div>
@@ -189,10 +193,16 @@ $activityTypes = [
                                 <td><?php echo htmlspecialchars($row['full_name']); ?> (<?php echo htmlspecialchars($row['username']); ?>)</td>
                                 <td>
                                     <?php 
-                                    $activityTypeDisplay = str_replace('_', ' ', ucfirst($row['activity_type']));
+                                    // Normalize activity type; fallback based on details for generate link
+                                    $rawType = $row['activity_type'] ?? '';
+                                    if (($rawType === '' || $rawType === null) && !empty($row['details']) && str_contains($row['details'], 'Generated patient dashboard link')) {
+                                        $rawType = 'generate_link';
+                                    }
+
+                                    $activityTypeDisplay = str_replace('_', ' ', ucfirst($rawType));
                                     
                                     // Add icons based on activity type
-                                    $icon = match($row['activity_type']) {
+                                    $icon = match($rawType) {
                                         'login' => '<i class="fas fa-sign-in-alt text-success"></i>',
                                         'logout' => '<i class="fas fa-sign-out-alt text-danger"></i>',
                                         'create_report' => '<i class="fas fa-file-medical text-primary"></i>',
@@ -208,6 +218,7 @@ $activityTypes = [
                                         'export_report' => '<i class="fas fa-file-export text-primary"></i>',
                                         'import_data' => '<i class="fas fa-file-import text-primary"></i>',
                                         'view_logs' => '<i class="fas fa-history text-secondary"></i>',
+                                        'generate_link' => '<i class="fas fa-link text-primary"></i>',
                                         default => '<i class="fas fa-history"></i>'
                                     };
                                     
@@ -310,6 +321,25 @@ $activityTypes = [
                 $('#end_date').val(end.format('YYYY-MM-DD'));
             });
         });
+        
+        // Export to PDF function
+        function exportToPDF() {
+            // Get current filter values
+            var userId = $('#user_id').val();
+            var activityType = $('#activity_type').val();
+            var startDate = $('#start_date').val();
+            var endDate = $('#end_date').val();
+            
+            // Build URL with current filters
+            var url = 'export_logs_pdf.php?' + 
+                     'user_id=' + encodeURIComponent(userId) + 
+                     '&activity_type=' + encodeURIComponent(activityType) + 
+                     '&start_date=' + encodeURIComponent(startDate) + 
+                     '&end_date=' + encodeURIComponent(endDate);
+            
+            // Open PDF in new window
+            window.open(url, '_blank');
+        }
     </script>
 </body>
 </html>

@@ -188,7 +188,8 @@ $result = executeQuery($query);
                                 
                                 // Actions column
                                 echo "<td class='action-buttons'>";
-                                echo "<a href='view_prescription.php?id={$row['id']}' class='btn btn-sm btn-outline-primary' title='View'><i class='fas fa-eye'></i></a> ";
+                                // Direct link to view_prescription.php with ID instead of using viewDocumentWithToken
+                                echo "<a href='view_prescription.php?id={$row['id']}' class='btn btn-sm btn-outline-primary' title='View' target='_blank'><i class='fas fa-eye'></i></a> ";
                                 
                                 if (hasRole(['admin', 'doctor'])) {
                                     echo "<a href='edit_prescription.php?id={$row['id']}' class='btn btn-sm btn-outline-warning' title='Edit'><i class='fas fa-edit'></i></a> ";

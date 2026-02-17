@@ -2,23 +2,72 @@
 // Start session
 session_start();
 
+// Include timezone configuration
+require_once 'config/timezone.php';
+
 // Include database configuration
 require_once 'config/database.php';
 
-// Check if treatment ID is provided
-if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header('Location: nurse_treatments.php');
+// Include authentication helpers
+require_once 'config/auth.php';
+
+// Include secure links functions
+require_once 'config/secure_links.php';
+
+// Check if token is provided
+$token = isset($_GET['token']) ? $_GET['token'] : '';
+$doc = isset($_GET['doc']) ? $_GET['doc'] : '';
+
+if (empty($token) || empty($doc)) {
+    header("Location: index.php");
     exit;
 }
 
-$treatment_id = sanitize($_GET['id']);
+// Decode the encrypted document ID
+$decoded = base64_decode($doc);
+if ($decoded === false) {
+    die('Access denied: Invalid document reference');
+}
 
-// Get treatment details
+// Extract treatment ID and patient ID from decoded data
+$parts = explode('_', $decoded);
+if (count($parts) !== 2) {
+    die('Access denied: Invalid document reference');
+}
+
+$treatmentId = (int)$parts[0];
+$decodedPatientId = (int)$parts[1];
+
+// Validate token and get patient ID
+$tokenData = validateReportToken($token);
+
+if (!$tokenData) {
+    die('Access denied: Invalid or expired token');
+}
+
+// Get patient ID from validated token
+$patientId = $tokenData['patient_id'];
+
+// Verify the decoded patient ID matches the token's patient ID
+if ($decodedPatientId !== $patientId) {
+    die('Access denied: Document does not belong to this patient');
+}
+
+// Create database connection
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Get treatment details and verify it belongs to the token's patient
 $query = "SELECT nt.*, p.name AS patient_name, p.civil_id, p.mobile, p.file_number 
           FROM nurse_treatments nt
           JOIN patients p ON nt.patient_id = p.id
-          WHERE nt.id = '$treatment_id'";
-$result = executeQuery($query);
+          WHERE nt.id = ? AND nt.patient_id = ?";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("ii", $treatmentId, $patientId);
+$stmt->execute();
+$result = $stmt->get_result();
 
 if (!$result || $result->num_rows == 0) {
     $_SESSION['error'] = "Treatment record not found.";
@@ -183,13 +232,10 @@ $clinic = $clinic_result->fetch_assoc();
     </style>
 </head>
 <body>
-    <!-- Report Actions -->
+    <!-- Report Actions (no back button for patient view) -->
     <div class="container-fluid no-print">
         <div class="row mb-3">
             <div class="col-12">
-                <a href="nurse_treatments.php" class="btn btn-secondary btn-back">
-                    <i class="fas fa-arrow-left"></i> Back to Treatments
-                </a>
                 <button onclick="printReport()" class="btn btn-primary">
                     <i class="fas fa-print"></i> Print/Save as PDF
                 </button>

@@ -5,48 +5,91 @@ session_start();
 // Include authentication and role functions
 require_once 'config/auth.php';
 
-// Restrict access to admin and doctor roles only
-if (!hasRole(['admin', 'doctor'])) {
-    header('Location: index.php');
-    exit;
-}
-
 // Include timezone configuration
 require_once 'config/timezone.php';
 
 // Include database configuration
 require_once 'config/database.php';
 
-// Check if prescription ID is provided
-if (!isset($_GET['id'])) {
-    header("Location: prescriptions.php");
+// Include secure links functions
+require_once 'config/secure_links.php';
+
+// Check if token or ID is provided
+$token = isset($_GET['token']) ? $_GET['token'] : '';
+$doc = isset($_GET['doc']) ? $_GET['doc'] : '';
+$prescriptionId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+// Check if user is logged in as staff (admin/doctor)
+$isStaff = isset($_SESSION['user_id']) && (hasRole(['admin']) || hasRole(['doctor']));
+
+// This will hold the patient ID when access is via token (patients)
+$patientId = null;
+
+if ($isStaff && $prescriptionId > 0) {
+    // Staff access: open directly by prescription ID, no token/doc required
+} elseif (!empty($token) && !empty($doc)) {
+    // Patient access via secure link: validate token and doc
+    $tokenData = validateReportToken($token);
+    if (!$tokenData) {
+        die('Access denied: Invalid or expired token');
+    }
+
+    // Decode the encrypted document ID
+    $decoded = base64_decode($doc);
+    if ($decoded === false) {
+        die('Access denied: Invalid document reference');
+    }
+
+    // Extract prescription ID and patient ID from decoded data
+    $parts = explode('_', $decoded);
+    if (count($parts) !== 2) {
+        die('Access denied: Invalid document reference');
+    }
+
+    $prescriptionId = (int)$parts[0];
+    $decodedPatientId = (int)$parts[1];
+
+    // Get patient ID from validated token
+    $patientId = (int)$tokenData['patient_id'];
+
+    // Verify the decoded patient ID matches the token's patient ID
+    if ($decodedPatientId !== $patientId) {
+        die('Access denied: Document does not belong to this patient');
+    }
+} else {
+    // No valid staff ID or token+doc provided
+    header('Location: index.php');
     exit;
 }
 
-$prescriptionId = sanitize($_GET['id']);
+// Create database connection
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
 
 // Get prescription details
-$prescriptionQuery = "SELECT p.*, pt.name AS patient_name, pt.civil_id, pt.mobile, pt.file_number,
-                d.name as doctor_name, d.position as doctor_position, d.signature_image_path
-                FROM prescriptions p
-                JOIN patients pt ON p.patient_id = pt.id
-                JOIN doctors d ON p.doctor_id = d.id
-                WHERE p.id = '$prescriptionId'";
-
-// Use direct database connection for reliability
-global $conn;
-if (!isset($conn) || !$conn) {
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
-    }
+// For staff: load by prescription ID only
+// For patients: ensure prescription belongs to the token's patient
+if ($isStaff && $prescriptionId > 0) {
+    $prescriptionQuery = "SELECT p.*, pt.name AS patient_name, pt.civil_id, pt.mobile, pt.file_number,
+                    d.name as doctor_name, d.position as doctor_position, d.signature_image_path
+                    FROM prescriptions p
+                    JOIN patients pt ON p.patient_id = pt.id
+                    JOIN doctors d ON p.doctor_id = d.id
+                    WHERE p.id = ?";
+    $stmt = $conn->prepare($prescriptionQuery);
+    $stmt->bind_param("i", $prescriptionId);
+} else {
+    $prescriptionQuery = "SELECT p.*, pt.name AS patient_name, pt.civil_id, pt.mobile, pt.file_number,
+                    d.name as doctor_name, d.position as doctor_position, d.signature_image_path
+                    FROM prescriptions p
+                    JOIN patients pt ON p.patient_id = pt.id
+                    JOIN doctors d ON p.doctor_id = d.id
+                    WHERE p.id = ? AND p.patient_id = ?";
+    $stmt = $conn->prepare($prescriptionQuery);
+    $stmt->bind_param("ii", $prescriptionId, $patientId);
 }
-
-$stmt = $conn->prepare($prescriptionQuery);
-if (!$stmt) {
-    die("Prepare failed: " . $conn->error);
-}
-
 $stmt->execute();
 $prescriptionResult = $stmt->get_result();
 
@@ -234,9 +277,12 @@ function sanitizeFilename($string) {
     <div class="container-fluid no-print">
         <div class="row mb-3">
             <div class="col-12">
-                <a href="prescriptions.php" class="btn btn-secondary btn-back">
-                    <i class="fas fa-arrow-left"></i> Back to Prescriptions
-                </a>
+                <?php if ($isStaff && empty($token)): ?>
+                    <a href="prescriptions.php" class="btn btn-secondary me-2">
+                        <i class="fas fa-arrow-left"></i> Back to Prescriptions
+                    </a>
+                <?php endif; ?>
+
                 <button onclick="printReport()" class="btn btn-primary">
                     <i class="fas fa-print"></i> Print/Save as PDF
                 </button>

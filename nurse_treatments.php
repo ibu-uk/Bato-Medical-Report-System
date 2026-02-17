@@ -259,7 +259,7 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
                                 echo "<td>{$row['nurse_name']}</td>";
                                 echo "<td>$payment_badge</td>";
                                 echo "<td class='action-buttons'>
-                                        <a href='view_nurse_treatment.php?id={$row['id']}' class='btn btn-sm btn-outline-primary me-1' title='View'>
+                                        <a href='view_treatment.php?id={$row['id']}' class='btn btn-sm btn-outline-primary me-1' title='View'>
                                             <i class='fas fa-eye'></i>
                                         </a>";
                                         if (hasRole(['admin', 'nurse'])) {

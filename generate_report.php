@@ -14,6 +14,9 @@ require_once 'config/auth.php';
 // Require login to access this page
 requireLogin();
 
+// Get a single database connection for the entire process
+$conn = getDbConnection();
+
 // Check if form is submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get form data
@@ -31,11 +34,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Get conclusion
     $conclusion = isset($_POST['conclusion']) ? sanitize($_POST['conclusion']) : null;
-
+    
     // Insert report into database
-    $reportQuery = "INSERT INTO reports (patient_id, doctor_id, report_date, generated_by, user_id, conclusion, created_at) 
-                   VALUES ('$patientId', '$doctorId', '$reportDate', '$generatedBy', '$userId', " . ($conclusion !== null ? "'" . $conclusion . "'" : "NULL") . ", NOW())";
-    $reportId = executeInsert($reportQuery);
+    $reportQuery = "INSERT INTO reports (patient_id, doctor_id, report_date, generated_by, user_id, created_at) 
+                   VALUES (?, ?, ?, ?, ?, NOW())";
+    
+    $stmt = $conn->prepare($reportQuery);
+    if (!$stmt) {
+        echo "<div class='alert alert-danger'>Error preparing report statement: " . $conn->error . "</div>";
+        $conn->close();
+        exit;
+    }
+    
+    $stmt->bind_param("iisss", $patientId, $doctorId, $reportDate, $generatedBy, $userId);
+    
+    if ($stmt->execute()) {
+        $reportId = $conn->insert_id;
+        echo "<div class='alert alert-success'>Report saved successfully! Report ID: $reportId</div>";
+    } else {
+        echo "<div class='alert alert-danger'>Error saving report: " . $stmt->error . "</div>";
+        $conn->close();
+        exit;
+    }
     
     // Insert test results
     if ($reportId && count($testTypeIds) > 0) {
@@ -47,11 +67,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $testRemark = isset($testRemarks[$i]) ? sanitize($testRemarks[$i]) : null;
                 
                 $testQuery = "INSERT INTO report_tests (report_id, test_type_id, test_value, flag, remarks) 
-                             VALUES ('$reportId', '$testTypeId', '$testValue', '$testFlag', '$testRemark')";
-                executeQuery($testQuery);
+                             VALUES (?, ?, ?, ?, ?)";
+                
+                $testStmt = $conn->prepare($testQuery);
+                $testStmt->bind_param("iisss", $reportId, $testTypeId, $testValue, $testFlag, $testRemark);
+                
+                if (!$testStmt->execute()) {
+                    echo "<div class='alert alert-danger'>Error saving test result: " . $testStmt->error . "</div>";
+                }
             }
         }
     }
+    
+    // Close connection
+    $conn->close();
     
     // Redirect to view the report
     header("Location: view_report.php?id=$reportId");

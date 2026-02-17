@@ -14,13 +14,22 @@ require_once 'config/auth.php';
 // Require login to access this page
 requireLogin();
 
-// Get all reports
-$query = "SELECT r.id, r.report_date, r.created_at, p.name as patient_name, p.civil_id, d.name as doctor_name, 
-          u.full_name as generated_by
+// Get all reports, including whether the patient already has an active link
+$query = "SELECT r.id, r.report_date, r.created_at, r.patient_id,
+                 p.name as patient_name, p.civil_id,
+                 d.name as doctor_name,
+                 u.full_name as generated_by,
+                 COALESCE(rl.active_links, 0) AS active_links
           FROM reports r
           JOIN patients p ON r.patient_id = p.id
           JOIN doctors d ON r.doctor_id = d.id
           LEFT JOIN users u ON r.user_id = u.id
+          LEFT JOIN (
+              SELECT patient_id, COUNT(*) AS active_links
+              FROM report_links
+              WHERE expiry_date > NOW()
+              GROUP BY patient_id
+          ) rl ON rl.patient_id = r.patient_id
           ORDER BY r.created_at DESC";
 $reports = executeQuery($query);
 ?>
@@ -57,7 +66,7 @@ $reports = executeQuery($query);
             margin: 0 2px;
             padding: 0.25rem 0.5rem;
         }
-        /* Table row styling */
+        /* Table styling */
         #reportsTable {
             border-collapse: separate;
             border-spacing: 0;
@@ -76,7 +85,6 @@ $reports = executeQuery($query);
         #reportsTable tbody tr:hover {
             background-color: #f8f9fa !important;
         }
-        /* Style for table cells */
         #reportsTable td, 
         #reportsTable th {
             padding: 12px 15px;
@@ -87,7 +95,6 @@ $reports = executeQuery($query);
         #reportsTable th:last-child {
             border-right: none;
         }
-        /* Style for table header */
         #reportsTable thead th {
             background-color: #e9ecef;
             border-bottom: 2px solid #c6c8ca;
@@ -97,7 +104,6 @@ $reports = executeQuery($query);
             font-size: 0.8rem;
             letter-spacing: 0.5px;
         }
-        /* Remove blue highlight from pagination */
         .page-item.active .page-link {
             background-color: #6c757d;
             border-color: #6c757d;
@@ -125,17 +131,17 @@ $reports = executeQuery($query);
                         </a>
                     </div>
                     <div class="card-body">
-    <?php
-    // Display success or error messages
-    if (isset($_SESSION['success'])) {
-        echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
-        unset($_SESSION['success']);
-    }
-    if (isset($_SESSION['error'])) {
-        echo '<div class="alert alert-danger">' . $_SESSION['error'] . '</div>';
-        unset($_SESSION['error']);
-    }
-    ?>
+                        <?php
+                        // Display success or error messages
+                        if (isset($_SESSION['success'])) {
+                            echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+                            unset($_SESSION['success']);
+                        }
+                        if (isset($_SESSION['error'])) {
+                            echo '<div class="alert alert-danger">' . $_SESSION['error'] . '</div>';
+                            unset($_SESSION['error']);
+                        }
+                        ?>
                         <div class="table-responsive">
                             <table id="reportsTable" class="table">
                                 <thead>
@@ -147,6 +153,7 @@ $reports = executeQuery($query);
                                         <th>Doctor</th>
                                         <th>Created By</th>
                                         <th>Created At</th>
+                                        <th>Link Status</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -162,12 +169,22 @@ $reports = executeQuery($query);
                                             echo "<td>{$row['doctor_name']}</td>";
                                             echo "<td>{$row['generated_by']}</td>";
                                             echo "<td>" . date('Y-m-d H:i', strtotime($row['created_at'])) . "</td>";
+
+                                            // Link status column: show whether patient already has an active link
+                                            if (!empty($row['active_links']) && (int)$row['active_links'] > 0) {
+                                                echo "<td><span class='badge bg-success'>Link Active</span></td>";
+                                            } else {
+                                                echo "<td><span class='badge bg-secondary'>No Link</span></td>";
+                                            }
+
                                             echo '<td class="action-buttons">
-                                                <a href="view_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-primary" title="View">
+                                                <a href="javascript:void(0);" onclick="generatePatientLink(' . $row['patient_id'] . ')" class="btn btn-sm btn-outline-success" title="Generate Patient Link">
+                                                    <i class="fas fa-link"></i>
+                                                </a>
+                                                <a href="view_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-primary" title="View" target="_blank">
                                                     <i class="fas fa-eye"></i>
                                                 </a>';
                                             
-                                            // Only show edit and delete buttons for admin and doctor users
                                             if (hasRole(['admin', 'doctor'])) {
                                                 echo '<a href="edit_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-warning" title="Edit">
                                                     <i class="fas fa-edit"></i>
@@ -210,7 +227,6 @@ $reports = executeQuery($query);
         </div>
     </div>
 
-
     <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -218,48 +234,281 @@ $reports = executeQuery($query);
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     
     <script>
-        $(document).ready(function() {
-            // Initialize DataTable with responsive extension
-            $('#reportsTable').DataTable({
-                order: [[3, 'desc']], // Sort by report date (column index 3) in descending order
-                responsive: true,
-                pageLength: 25,
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-                language: {
-                    search: "_INPUT_",
-                    searchPlaceholder: "Search reports..."
-                },
-                columnDefs: [
-                    { type: 'date', targets: 3 }, // Ensure proper date sorting for the report date column
-                    { className: 'text-center', targets: [0, 7] } // Center align ID and Actions columns
-                ],
-                // Remove DataTables default styling
-                initComplete: function() {
-                    $('.dataTables_filter input').addClass('form-control');
-                    $('.dataTables_length select').addClass('form-select');
-                    $('.dataTables_paginate .paginate_button').addClass('btn btn-sm btn-outline-secondary');
-                },
-                // Custom row styling
-                createdRow: function(row, data, dataIndex) {
-                    $(row).css('background-color', 'transparent');
-                    $(row).hover(
-                        function() { $(this).css('background-color', '#f2f2f2'); },
-                        function() { $(this).css('background-color', 'transparent'); }
-                    );
-                }
-            });
-            
-            // Remove DataTables default classes that cause blue highlight
-            $('.dataTables_wrapper .dataTables_length select').removeClass('custom-select custom-select-sm');
-            $('.dataTables_wrapper .dataTables_filter input').removeClass('form-control-sm');
-        });
+    // Function to show toast notification
+    function showToast(message, isError = false) {
+        const toast = document.createElement('div');
+        toast.className = `toast-notification ${isError ? 'error' : ''}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
         
-        function deleteReport(id) {
-            if (confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
-                window.location.href = 'delete_report.php?id=' + id;
+        setTimeout(() => toast.classList.add('show'), 10);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    
+    // Function to handle modal cleanup
+    function setupModalCleanup(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                modal.addEventListener('hidden.bs.modal', function() {
+                    bsModal.dispose();
+                    modal.remove();
+                });
             }
         }
+    }
+    
+    // Function to generate patient link
+    function generatePatientLink(patientId) {
+        console.log('Generating link for patient ID:', patientId);
+        showToast('Generating secure link...');
         
+        fetch('generate_secure_link_simple.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'patient_id=' + patientId
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Remove any existing modals first
+                const existingModal = document.getElementById('secureLinkModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+
+                // Create and show the modal
+                const modalHtml = `
+                    <div class="modal fade" id="secureLinkModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-shield-alt me-2"></i>
+                                        Patient Link Generated Successfully
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        <strong>Success!</strong> Patient dashboard link has been generated.
+                                    </div>
+                                    <div class="mb-3">
+                                        <h6><i class="fas fa-info-circle me-2"></i> About This Link:</h6>
+                                        <ul>
+                                            <li><strong>Permanent Access:</strong> One link for patient's complete medical history</li>
+                                            <li><strong>All Reports:</strong> Patient can view all their medical reports</li>
+                                            <li><strong>Prescriptions:</strong> All medication records included</li>
+                                            <li><strong>Nurse Treatments:</strong> All treatment records included</li>
+                                            <li><strong>Secure:</strong> Token-based authentication prevents unauthorized access</li>
+                                            <li><strong>Privacy:</strong> No patient IDs exposed in URLs</li>
+                                        </ul>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Patient Dashboard Link:</strong></label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" value="${data.url}" id="patientLinkInput" readonly>
+                                            <button class="btn btn-outline-primary" type="button" onclick="copyToClipboard('patientLinkInput')">
+                                                <i class="fas fa-copy"></i> Copy
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Access Token:</strong></label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" value="${data.token}" id="tokenInput" readonly>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('tokenInput')">
+                                                <i class="fas fa-key"></i> Copy Token
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="text-center">
+                                        <a href="${data.url}" target="_blank" class="btn btn-primary">
+                                            <i class="fas fa-external-link-alt me-2"></i>
+                                            Open Patient Dashboard
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+
+                // Add modal to the DOM
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                // Initialize and show the modal
+                const modalElement = document.getElementById('secureLinkModal');
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+                
+                // Clean up the modal when it's closed
+                modalElement.addEventListener('hidden.bs.modal', function () {
+                    modal.dispose();
+                    modalElement.remove();
+                });
+            } else {
+                throw new Error(data.message || 'Unknown error occurred');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to generate patient link: ' + error.message, true);
+        });
+    }
+
+    // Function to view document with token
+    function viewDocumentWithToken(documentId, patientId, documentType) {
+        console.log('Viewing document:', {documentId, patientId, documentType});
+        showToast('Generating document link...');
+        
+        // Hide all generate link buttons while loading
+        document.querySelectorAll('.generate-link-btn').forEach(btn => {
+            btn.style.display = 'none';
+        })
+        .then(data => {
+            if (data.success) {
+                // Create secure document URL with encoded ID
+                const docParam = btoa(documentId + '_' + patientId);
+                // Get the base URL dynamically including the Bato-Medical-Report-System folder
+                const pathParts = window.location.pathname.split('/');
+                // Remove the current file name (reports.php) and any empty parts
+                pathParts.pop();
+                const basePath = pathParts.join('/');
+                let viewUrl;
+                
+                if (documentType === 'report') {
+                    viewUrl = `${window.location.origin}${basePath}/view_report.php?token=${encodeURIComponent(data.token)}&doc=${docParam}`;
+                } else if (documentType === 'prescription') {
+                    viewUrl = 'view_prescription.php?token=' + encodeURIComponent(data.token) + '&doc=' + docParam;
+                } else if (documentType === 'treatment') {
+                    viewUrl = 'view_nurse_treatment.php?token=' + encodeURIComponent(data.token) + '&doc=' + docParam;
+                }
+                
+                // Open in new window
+                window.open(viewUrl, '_blank');
+                showToast('Document opened in new tab');
+            } else {
+                throw new Error(data.message || 'Failed to generate document link');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to open document: ' + error.message, true);
+        });
+    }
+
+    // Helper function to copy text to clipboard
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.value;
+        
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Copied to clipboard!');
+            } catch (e) {
+                console.error('Fallback copy failed:', e);
+                showToast('Failed to copy. Please try again.', true);
+            }
+            document.body.removeChild(textarea);
+        });
+    }
+
+    // Initialize when document is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize DataTable
+        const dataTable = $('#reportsTable').DataTable({
+            order: [[3, 'desc']], // Sort by report date (column index 3) in descending order
+            responsive: true,
+            pageLength: 25,
+            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search reports..."
+            },
+            columnDefs: [
+                { type: 'date', targets: 3 }, // Ensure proper date sorting
+                { className: 'text-center', targets: [0, 7] } // Center align ID and Actions columns
+            ],
+            initComplete: function() {
+                $('.dataTables_filter input').addClass('form-control');
+                $('.dataTables_length select').addClass('form-select');
+                $('.dataTables_paginate .paginate_button').addClass('btn btn-sm btn-outline-secondary');
+            },
+            createdRow: function(row, data, dataIndex) {
+                $(row).css('background-color', 'transparent');
+                $(row).hover(
+                    function() { $(this).css('background-color', '#f2f2f2'); },
+                    function() { $(this).css('background-color', 'transparent'); }
+                );
+            }
+        });
+
+        // Remove DataTables default classes that cause blue highlight
+        $('.dataTables_wrapper .dataTables_length select').removeClass('custom-select custom-select-sm');
+        $('.dataTables_wrapper .dataTables_filter input').removeClass('form-control-sm');
+    });
+    
+    // Add toast styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1051;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            max-width: 90%;
+            text-align: center;
+            pointer-events: none;
+        }
+        .toast-notification.error {
+            background-color: #dc3545;
+        }
+        .toast-notification.show {
+            opacity: 1;
+        }
+        
+        /* Modal styles */
+        .modal-backdrop {
+            z-index: 1040 !important;
+        }
+        .modal {
+            z-index: 1050 !important;
+        }
+    `;
+    document.head.appendChild(style);
     </script>
 </body>
 </html>
