@@ -16,9 +16,9 @@ $token = isset($_GET['token']) ? $_GET['token'] : '';
 $doc = isset($_GET['doc']) ? $_GET['doc'] : '';
 $treatmentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// Check if user is logged in as staff (admin/doctor)
+// Check if user is logged in as staff (admin/doctor/nurse/receptionist)
 require_once 'config/auth.php';
-$isStaff = isset($_SESSION['user_id']) && (hasRole(['admin']) || hasRole(['doctor']));
+$isStaff = isset($_SESSION['user_id']) && hasRole(['admin', 'doctor', 'nurse', 'receptionist']);
 
 // This will hold the patient ID when access is via token (patients)
 $patientId = null;

@@ -72,7 +72,8 @@ requireLogin();
         <div class="container-fluid py-4">
         <!-- Dashboard Cards -->
         <div class="row mb-4">
-            <!-- Total Patients Card -->
+            <!-- Total Patients Card (admin only) -->
+            <?php if (hasRole(['admin'])): ?>
             <div class="col-md-3 mb-3">
                 <div class="card border-left-primary h-100 py-2">
                     <div class="card-body">
@@ -95,6 +96,7 @@ requireLogin();
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- Total Reports Card -->
             <div class="col-md-3 mb-3">

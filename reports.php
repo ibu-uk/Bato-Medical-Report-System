@@ -126,9 +126,11 @@ $reports = executeQuery($query);
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">All Reports</h5>
+                        <?php if (hasRole(['admin', 'doctor'])): ?>
                         <a href="index.php" class="btn btn-primary">
                             <i class="fas fa-plus"></i> New Report
                         </a>
+                        <?php endif; ?>
                     </div>
                     <div class="card-body">
                         <?php
@@ -153,7 +155,9 @@ $reports = executeQuery($query);
                                         <th>Doctor</th>
                                         <th>Created By</th>
                                         <th>Created At</th>
+                                        <?php if (hasRole(['admin', 'receptionist'])): ?>
                                         <th>Link Status</th>
+                                        <?php endif; ?>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -170,30 +174,39 @@ $reports = executeQuery($query);
                                             echo "<td>{$row['generated_by']}</td>";
                                             echo "<td>" . date('Y-m-d H:i', strtotime($row['created_at'])) . "</td>";
 
-                                            // Link status column: show whether patient already has an active link
-                                            if (!empty($row['active_links']) && (int)$row['active_links'] > 0) {
-                                                echo "<td><span class='badge bg-success'>Link Active</span></td>";
-                                            } else {
-                                                echo "<td><span class='badge bg-secondary'>No Link</span></td>";
+                                            // Link status column: show whether patient already has an active link (only admin & receptionist)
+                                            if (hasRole(['admin', 'receptionist'])) {
+                                                if (!empty($row['active_links']) && (int)$row['active_links'] > 0) {
+                                                    echo "<td><span class='badge bg-success'>Link Active</span></td>";
+                                                } else {
+                                                    echo "<td><span class='badge bg-secondary'>No Link</span></td>";
+                                                }
                                             }
 
-                                            echo '<td class="action-buttons">
-                                                <a href="javascript:void(0);" onclick="generatePatientLink(' . $row['patient_id'] . ')" class="btn btn-sm btn-outline-success" title="Generate Patient Link">
-                                                    <i class="fas fa-link"></i>
-                                                </a>
-                                                <a href="view_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-primary" title="View" target="_blank">
+                                            echo '<td class="action-buttons">';
+
+                                            // View button is available to all logged-in roles
+                                            echo '<a href="view_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-primary" title="View" target="_blank">
                                                     <i class="fas fa-eye"></i>
                                                 </a>';
-                                            
+
+                                            // Admin and receptionist can generate links
+                                            if (hasRole(['admin', 'receptionist'])) {
+                                                echo '<a href="javascript:void(0);" onclick="generatePatientLink(' . $row['patient_id'] . ')" class="btn btn-sm btn-outline-success" title="Generate Patient Link">
+                                                        <i class="fas fa-link"></i>
+                                                    </a>';
+                                            }
+
+                                            // Only admin/doctor can edit or delete
                                             if (hasRole(['admin', 'doctor'])) {
                                                 echo '<a href="edit_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-warning" title="Edit">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <button class="btn btn-sm btn-outline-danger" onclick="if(confirm(\'Are you sure you want to delete this report?\')) { window.location.href=\'delete_report.php?id=' . $row['id'] . '\'; }" title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>';
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <button class="btn btn-sm btn-outline-danger" onclick="if(confirm(\'Are you sure you want to delete this report?\')) { window.location.href=\'delete_report.php?id=' . $row['id'] . '\'; }" title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>';
                                             }
-                                                
+
                                             echo '</td>';
                                             echo "</tr>";
                                         }
@@ -323,15 +336,6 @@ $reports = executeQuery($query);
                                             <input type="text" class="form-control" value="${data.url}" id="patientLinkInput" readonly>
                                             <button class="btn btn-outline-primary" type="button" onclick="copyToClipboard('patientLinkInput')">
                                                 <i class="fas fa-copy"></i> Copy
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label"><strong>Access Token:</strong></label>
-                                        <div class="input-group">
-                                            <input type="text" class="form-control" value="${data.token}" id="tokenInput" readonly>
-                                            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('tokenInput')">
-                                                <i class="fas fa-key"></i> Copy Token
                                             </button>
                                         </div>
                                     </div>

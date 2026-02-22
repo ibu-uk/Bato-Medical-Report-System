@@ -12,7 +12,7 @@ require_once 'config/database.php';
 // Include authentication and role functions
 require_once 'config/auth.php';
 
-// Restrict access to admin and doctor roles only
+// Page access control - only admin and doctor can access prescriptions
 if (!hasRole(['admin', 'doctor'])) {
     header('Location: index.php');
     exit;
@@ -109,9 +109,11 @@ $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON p
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">All Prescriptions</h5>
+                        <?php if (hasRole(['admin', 'doctor'])): ?>
                         <a href="add_prescription.php" class="btn btn-primary">
                             <i class="fas fa-plus"></i> New Prescription
                         </a>
+                        <?php endif; ?>
                     </div>
             
                     <div class="card-body">
@@ -188,9 +190,10 @@ $result = executeQuery($query);
                                 
                                 // Actions column
                                 echo "<td class='action-buttons'>";
-                                // Direct link to view_prescription.php with ID instead of using viewDocumentWithToken
+                                // View is allowed for all roles that can access this page
                                 echo "<a href='view_prescription.php?id={$row['id']}' class='btn btn-sm btn-outline-primary' title='View' target='_blank'><i class='fas fa-eye'></i></a> ";
-                                
+
+                                // Only admin/doctor can edit or delete prescriptions
                                 if (hasRole(['admin', 'doctor'])) {
                                     echo "<a href='edit_prescription.php?id={$row['id']}' class='btn btn-sm btn-outline-warning' title='Edit'><i class='fas fa-edit'></i></a> ";
                                     // Delete form with CSRF protection

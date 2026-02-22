@@ -165,9 +165,11 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">All Treatment Records</h5>
+                        <?php if (hasRole(['admin', 'nurse'])): ?>
                         <a href="add_nurse_treatment.php" class="btn btn-primary">
                             <i class="fas fa-plus"></i> New Treatment Record
                         </a>
+                        <?php endif; ?>
                     </div>
                     <div class="card-body">
             </div>

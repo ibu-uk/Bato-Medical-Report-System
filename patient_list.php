@@ -226,9 +226,11 @@ $result = $stmt->get_result();
         <div class="container-fluid py-4">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="mb-0">Patient List</h2>
+                <?php if (hasRole(['admin', 'receptionist'])): ?>
                 <a href="add_patient.php" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>Add New Patient
                 </a>
+                <?php endif; ?>
             </div>
 
             <!-- Search and Filter Card -->
@@ -301,12 +303,14 @@ $result = $stmt->get_result();
                                                     <a href="view_patient.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-info" title="View">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
+                                                    <?php if (hasRole(['admin'])): ?>
                                                     <a href="edit_patient.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-primary" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
                                                     <button type="button" class="btn btn-sm btn-danger delete-patient" data-id="<?php echo $row['id']; ?>" title="Delete">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
+                                                    <?php endif; ?>
                                                 </div>
                                             </td>
                                         </tr>
@@ -512,12 +516,14 @@ $result = $stmt->get_result();
                             <a href="view_patient.php?id=${patient.id}" class="btn btn-sm btn-info" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
+                            <?php if (hasRole(['admin'])): ?>
                             <a href="edit_patient.php?id=${patient.id}" class="btn btn-sm btn-primary" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
                             <button class="btn btn-sm btn-danger delete-patient" data-id="${patient.id}" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="patient-details">
