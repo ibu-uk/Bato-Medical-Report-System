@@ -296,8 +296,8 @@ function sanitizeFilename($string) {
         <!-- Header with Logo and Clinic Info -->
         <div class="row">
             <div class="col-6 text-start">
-                <!-- BATO Health/Beauty Logo - Using the actual image with custom CSS class -->
-                <img src="assets/images/IMG_4554.PNG" alt="BATO Health/Beauty" class="bato-logo">
+                <!-- Logo on the left side -->
+                <img src="assets/images/IMG_4554.PNG" alt="BATO Health/Beauty" class="bato-logo mb-1">
             </div>
             <div class="col-6 text-end">
                 <div class="clinic-info">

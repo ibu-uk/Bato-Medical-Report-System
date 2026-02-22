@@ -190,9 +190,13 @@ function sanitizeFilename($string) {
             margin: 20px auto;
             max-width: 8.5in;
         }
-        .header-logo {
-            max-height: 80px;
-            margin-bottom: 15px;
+        /* BATO logo styling (match view_report.php so logo is dark/bold) */
+        .bato-logo {
+            max-height: 100px;
+            width: auto;
+            margin-bottom: 10px;
+            filter: invert(1) brightness(0);
+            -webkit-filter: invert(1) brightness(0);
         }
         .patient-info {
             margin: 20px 0;
@@ -245,8 +249,8 @@ function sanitizeFilename($string) {
         <!-- Header with Logo and Clinic Info -->
         <div class="row">
             <div class="col-6 text-start">
-                <!-- BATO Health/Beauty Logo -->
-                <img src="assets/images/IMG_4554.PNG" alt="BATO Health/Beauty" class="header-logo">
+                <!-- BATO Health/Beauty Logo - match style with view_report/view_prescription -->
+                <img src="assets/images/IMG_4554.PNG" alt="BATO Health/Beauty" class="bato-logo mb-1">
             </div>
             <div class="col-6 text-end">
                 <div class="clinic-info">
