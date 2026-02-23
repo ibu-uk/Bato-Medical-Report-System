@@ -42,6 +42,7 @@ $reports = executeQuery($query);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+
     <style>
         body {
             background-color: #f8f9fa;
@@ -247,6 +248,23 @@ $reports = executeQuery($query);
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     
     <script>
+    // Auto-dismiss success alerts after a short delay
+    document.addEventListener('DOMContentLoaded', function() {
+        const successAlert = document.querySelector('.alert.alert-success');
+        if (successAlert) {
+            setTimeout(function() {
+                // Use Bootstrap's dismiss if available, otherwise just hide
+                const closeBtn = successAlert.querySelector('.btn-close');
+                if (closeBtn) {
+                    closeBtn.click();
+                } else {
+                    successAlert.classList.remove('show');
+                    successAlert.style.display = 'none';
+                }
+            }, 4000); // 4 seconds
+        }
+    });
+    
     // Function to show toast notification
     function showToast(message, isError = false) {
         const toast = document.createElement('div');

@@ -7,45 +7,7 @@ require_once 'config/auth.php';
 // Include database configuration
 require_once 'config/database.php';
 
-// Handle form submission for adding new doctor
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_doctor'])) {
-    $name = sanitize($_POST['name']);
-    $position = sanitize($_POST['position']);
-    $signature_path = '';
-    
-    // Handle signature image upload
-    if (isset($_FILES['signature']) && $_FILES['signature']['error'] === 0) {
-        $target_dir = "assets/images/signatures/";
-        
-        // Create directory if it doesn't exist
-        if (!file_exists($target_dir)) {
-            mkdir($target_dir, 0777, true);
-        }
-        
-        $file_extension = pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION);
-        $new_filename = uniqid('signature_') . '.' . $file_extension;
-        $target_file = $target_dir . $new_filename;
-        
-        // Check if image file is a actual image
-        $check = getimagesize($_FILES['signature']['tmp_name']);
-        if ($check !== false) {
-            // Upload file
-            if (move_uploaded_file($_FILES['signature']['tmp_name'], $target_file)) {
-                $signature_path = $target_file;
-            }
-        }
-    }
-    
-    // Insert doctor into database
-    $query = "INSERT INTO doctors (name, position, signature_image_path) VALUES ('$name', '$position', '$signature_path')";
-    $result = executeQuery($query);
-    
-    if ($result) {
-        $success_message = "Doctor added successfully!";
-    } else {
-        $error_message = "Error adding doctor. Please try again.";
-    }
-}
+// Note: adding new doctors is now handled in add_doctor.php
 
 // Handle doctor deletion
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
@@ -109,31 +71,15 @@ $doctors = executeQuery($query);
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">Bato Medical Report System</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.php">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="reports.php">Reports</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="manage_doctors.php">Doctors</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
     <!-- Main Content -->
     <div class="container my-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">Doctors</h3>
+            <a href="index.php" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+
         <!-- Alerts -->
         <?php if (isset($success_message)): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -150,35 +96,8 @@ $doctors = executeQuery($query);
         <?php endif; ?>
 
         <div class="row">
-            <!-- Add Doctor Form -->
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h4 class="mb-0">Add New Doctor</h4>
-                    </div>
-                    <div class="card-body">
-                        <form action="manage_doctors.php" method="POST" enctype="multipart/form-data">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Doctor Name</label>
-                                <input type="text" class="form-control" id="name" name="name" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="position" class="form-label">Position</label>
-                                <input type="text" class="form-control" id="position" name="position" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="signature" class="form-label">Signature Image</label>
-                                <input type="file" class="form-control" id="signature" name="signature" accept="image/*">
-                                <div class="form-text">Upload doctor's signature image (optional)</div>
-                            </div>
-                            <button type="submit" name="add_doctor" class="btn btn-primary">Add Doctor</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Doctors List -->
-            <div class="col-md-8">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header bg-primary text-white">
                         <h4 class="mb-0">Doctors List</h4>
@@ -212,6 +131,12 @@ $doctors = executeQuery($query);
                                             echo "</td>";
                                             echo "<td>";
                                             if (hasRole(['admin'])) {
+                                                // Edit button
+                                                echo "<a href='edit_doctor.php?id={$row['id']}' class='btn btn-sm btn-warning me-1' title='Edit'>
+                                                    <i class='fas fa-edit'></i>
+                                                </a>";
+
+                                                // Delete button
                                                 echo "<button class='btn btn-sm btn-danger' onclick='deleteDoctor({$row['id']})' title='Delete'>
                                                     <i class='fas fa-trash'></i>
                                                 </button>";

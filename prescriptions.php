@@ -63,7 +63,6 @@ $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON p
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="assets/css/arabic-fonts.css">
     <style>
         body {
             background-color: #f8f9fa;
@@ -90,6 +89,44 @@ $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON p
         }
         .prescription-date {
             white-space: nowrap;
+        }
+        /* Match reports table borders/rows styling */
+        #prescriptionsTable {
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #prescriptionsTable tbody tr {
+            background-color: #fff !important;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid #dee2e6;
+        }
+        #prescriptionsTable tbody tr:not(:last-child) {
+            border-bottom: 1px solid #c6c8ca;
+        }
+        #prescriptionsTable tbody tr:hover {
+            background-color: #f8f9fa !important;
+        }
+        #prescriptionsTable td,
+        #prescriptionsTable th {
+            padding: 12px 15px;
+            vertical-align: middle;
+            border-right: 1px solid #dee2e6;
+        }
+        #prescriptionsTable td:last-child,
+        #prescriptionsTable th:last-child {
+            border-right: none;
+        }
+        #prescriptionsTable thead th {
+            background-color: #e9ecef;
+            border-bottom: 2px solid #c6c8ca;
+            font-weight: 600;
+            color: #495057;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
