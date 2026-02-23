@@ -215,7 +215,9 @@ while ($row = $doctorsResult->fetch_assoc()) {
                                     <button type="button" class="btn btn-sm btn-primary" onclick="editUser(<?php echo htmlspecialchars(json_encode($user)); ?>)">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                                    <?php
+                                    // Only show delete for non-doctor users and never for your own account
+                                    if ($user['id'] != $_SESSION['user_id'] && $user['role'] !== 'doctor'): ?>
                                     <button type="button" class="btn btn-sm btn-danger" onclick="deleteUser(<?php echo $user['id']; ?>, '<?php echo htmlspecialchars($user['username']); ?>')">
                                         <i class="fas fa-trash"></i>
                                     </button>

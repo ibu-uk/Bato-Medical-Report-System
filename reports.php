@@ -198,12 +198,15 @@ $reports = executeQuery($query);
                                                     </a>';
                                             }
 
-                                            // Only admin/doctor can edit or delete
+                                            // Admin and doctor can edit; only admin can delete
                                             if (hasRole(['admin', 'doctor'])) {
                                                 echo '<a href="edit_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-warning" title="Edit">
                                                         <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <button class="btn btn-sm btn-outline-danger" onclick="if(confirm(\'Are you sure you want to delete this report?\')) { window.location.href=\'delete_report.php?id=' . $row['id'] . '\'; }" title="Delete">
+                                                    </a>';
+                                            }
+
+                                            if (hasRole(['admin'])) {
+                                                echo ' <button class="btn btn-sm btn-outline-danger" onclick="if(confirm(\'Are you sure you want to delete this report?\')) { window.location.href=\'delete_report.php?id=' . $row['id'] . '\'; }" title="Delete">
                                                         <i class="fas fa-trash"></i>
                                                     </button>';
                                             }
