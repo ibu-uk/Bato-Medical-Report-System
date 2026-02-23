@@ -123,9 +123,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $patients = executeQuery("SELECT id, name FROM patients ORDER BY name");
 $doctors = executeQuery("SELECT id, name FROM doctors ORDER BY name");
 
-// Fetch existing test results for this report
+// Fetch existing test results for this report (include flag so it can be edited/preserved)
 $test_results = [];
-$tests_query = "SELECT rt.id as report_test_id, rt.test_type_id, rt.test_value, tt.name as test_name, tt.unit, tt.normal_range FROM report_tests rt JOIN test_types tt ON rt.test_type_id = tt.id WHERE rt.report_id = $report_id";
+$tests_query = "SELECT rt.id as report_test_id, rt.test_type_id, rt.test_value, rt.flag, tt.name as test_name, tt.unit, tt.normal_range FROM report_tests rt JOIN test_types tt ON rt.test_type_id = tt.id WHERE rt.report_id = $report_id";
 $tests_result = executeQuery($tests_query);
 if ($tests_result && $tests_result->num_rows > 0) {
     while ($row = $tests_result->fetch_assoc()) {
@@ -212,10 +212,12 @@ if ($test_types_result && $test_types_result->num_rows > 0) {
                     </td>
                     <td><input type="text" class="form-control" name="test_row[<?php echo $idx; ?>][test_value]" value="<?php echo htmlspecialchars($tr['test_value']); ?>" required></td>
                     <td>
+                        <?php $flagUpper = strtoupper((string)$tr['flag']); ?>
                         <select class="form-select" name="test_row[<?php echo $idx; ?>][flag]">
-                            <option value="" <?php if (empty($tr['flag'])) echo 'selected'; ?>>Normal</option>
-                            <option value="High" <?php if ($tr['flag'] === 'High') echo 'selected'; ?>>High</option>
-                            <option value="Low" <?php if ($tr['flag'] === 'Low') echo 'selected'; ?>>Low</option>
+                            <option value="">--</option>
+                            <option value="NORMAL" <?php if ($flagUpper === 'NORMAL') echo 'selected'; ?>>NORMAL</option>
+                            <option value="HIGH" <?php if ($flagUpper === 'HIGH') echo 'selected'; ?>>HIGH</option>
+                            <option value="LOW" <?php if ($flagUpper === 'LOW') echo 'selected'; ?>>LOW</option>
                         </select>
                     </td>
                     <td><input type="text" class="form-control unit-field" value="<?php echo htmlspecialchars($tr['unit']); ?>" readonly></td>
@@ -258,9 +260,10 @@ if ($test_types_result && $test_types_result->num_rows > 0) {
             <td><input type="text" class="form-control" name="test_row[TEMPLATE][test_value]" value="" required></td>
             <td>
                 <select class="form-select" name="test_row[TEMPLATE][flag]">
-                    <option value="">Normal</option>
-                    <option value="High">High</option>
-                    <option value="Low">Low</option>
+                    <option value="">--</option>
+                    <option value="NORMAL">NORMAL</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="LOW">LOW</option>
                 </select>
             </td>
             <td><input type="text" class="form-control unit-field" value="" readonly></td>
