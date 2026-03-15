@@ -12,12 +12,13 @@ define('DB_NAME', 'bato_medical');
 // Create database connection
 function getDbConnection() {
     $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-    $conn->autocommit(true);
-    
+
     // Check connection
-    if ($conn->connect_error) {
+    if ($conn->connect_errno) {
         die("Connection failed: " . $conn->connect_error);
     }
+
+    $conn->autocommit(true);
     
     return $conn;
 }
@@ -42,6 +43,8 @@ function executeInsert($sql) {
 // Sanitize input data
 function sanitize($data) {
     $conn = getDbConnection();
-    return $conn->real_escape_string($data);
+    $safe = $conn->real_escape_string($data);
+    $conn->close();
+    return $safe;
 }
 ?>
