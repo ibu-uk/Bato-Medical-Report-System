@@ -25,8 +25,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $error = "Username and password are required";
     } else {
-        // Check user credentials
-        $query = "SELECT id, username, password, full_name, role, is_active FROM users WHERE username = ?";
+        // Check user credentials (including per-user permissions)
+        $query = "SELECT id, username, password, full_name, role, is_active,
+                         can_edit_reports, can_delete_reports,
+                         can_edit_prescriptions, can_delete_prescriptions,
+                         can_edit_treatments, can_delete_treatments,
+                         can_generate_links,
+                         can_manage_patients, can_delete_patients,
+                         can_manage_doctors, can_manage_users
+                  FROM users WHERE username = ?";
         
         global $conn;
         if (!isset($conn) || !$conn) {
@@ -52,11 +59,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (password_verify($password, $user['password'])) {
                     // Check if user is active
                     if ($user['is_active']) {
-                        // Set session variables
+                        // Set session variables (identity & role)
                         $_SESSION['user_id'] = $user['id'];
                         $_SESSION['username'] = $user['username'];
                         $_SESSION['full_name'] = $user['full_name'];
                         $_SESSION['role'] = $user['role'];
+                        // Per-user permissions (fallback to 0 if columns are missing)
+                        $_SESSION['can_edit_reports']        = isset($user['can_edit_reports'])        ? (int)$user['can_edit_reports']        : 0;
+                        $_SESSION['can_delete_reports']      = isset($user['can_delete_reports'])      ? (int)$user['can_delete_reports']      : 0;
+                        $_SESSION['can_edit_prescriptions']  = isset($user['can_edit_prescriptions'])  ? (int)$user['can_edit_prescriptions']  : 0;
+                        $_SESSION['can_delete_prescriptions']= isset($user['can_delete_prescriptions'])? (int)$user['can_delete_prescriptions']: 0;
+                        $_SESSION['can_edit_treatments']     = isset($user['can_edit_treatments'])     ? (int)$user['can_edit_treatments']     : 0;
+                        $_SESSION['can_delete_treatments']   = isset($user['can_delete_treatments'])   ? (int)$user['can_delete_treatments']   : 0;
+                        $_SESSION['can_generate_links']       = isset($user['can_generate_links'])      ? (int)$user['can_generate_links']      : 0;
+                        $_SESSION['can_manage_patients']      = isset($user['can_manage_patients'])     ? (int)$user['can_manage_patients']     : 0;
+                        $_SESSION['can_delete_patients']      = isset($user['can_delete_patients'])     ? (int)$user['can_delete_patients']     : 0;
+                        $_SESSION['can_manage_doctors']       = isset($user['can_manage_doctors'])      ? (int)$user['can_manage_doctors']      : 0;
+                        $_SESSION['can_manage_users']         = isset($user['can_manage_users'])        ? (int)$user['can_manage_users']        : 0;
                         
                         // Update last login time
                         $updateQuery = "UPDATE users SET last_login = NOW() WHERE id = ?";
@@ -143,6 +162,36 @@ if (password_verify($password, $user['password'])) {
             padding: 12px;
             border-radius: 5px;
         }
+
+        .ramadan-text-ar {
+            direction: rtl;
+            text-align: right;
+            color: #374151;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .ramadan-text-en {
+            color: #6b7280;
+            margin: 0;
+            font-size: 0.88rem;
+        }
+
+        .ramadan-modal .modal-content {
+            border: 0;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .ramadan-modal-header {
+            background: linear-gradient(120deg, #111827 0%, #1f2937 100%);
+            color: #fff;
+            border: 0;
+        }
+
+        .ramadan-modal .btn-close {
+            filter: invert(1);
+        }
     </style>
 </head>
 <body>
@@ -187,7 +236,51 @@ if (password_verify($password, $user['password'])) {
         </div>
     </div>
 
+    <div class="modal fade ramadan-modal" id="ramadanGreetingModal" tabindex="-1" aria-labelledby="ramadanGreetingModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header ramadan-modal-header">
+                    <h5 class="modal-title" id="ramadanGreetingModalLabel">رمضان كريم 🌙</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="ramadan-text-ar" lang="ar">
+                        تتقدم عيادة باتو بأطيب التهاني والتبريكات بمناسبة حلول شهر رمضان المبارك. نسأل الله أن يعيده عليكم بالصحة والعافية. كل عام وأنتم بخير.
+                    </p>
+                    <p class="ramadan-text-en">
+                        Bato Clinic extends warm wishes for Ramadan Mubarak. Wishing you health and wellness always.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Continue to Login</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function isRamadanNow() {
+                try {
+                    var monthParts = new Intl.DateTimeFormat('en-u-ca-islamic', { month: 'numeric' }).formatToParts(new Date());
+                    var monthPart = monthParts.find(function(part) { return part.type === 'month'; });
+                    var hijriMonth = monthPart ? parseInt(monthPart.value, 10) : NaN;
+                    return hijriMonth === 9;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            if (isRamadanNow()) {
+                var modalEl = document.getElementById('ramadanGreetingModal');
+                if (modalEl) {
+                    var ramadanModal = new bootstrap.Modal(modalEl);
+                    ramadanModal.show();
+                }
+            }
+        });
+    </script>
 </body>
 </html>
