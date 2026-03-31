@@ -7,7 +7,8 @@ require_once 'config/timezone.php';
 
 // Check if user is already logged in
 if (isset($_SESSION['user_id'])) {
-    header("Location: index.php");
+    $target = (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ? 'dashboard.php' : 'index.php';
+    header("Location: " . $target);
     exit;
 }
 
@@ -94,7 +95,8 @@ if (password_verify($password, $user['password'])) {
                         $logStmt->close();
                         
                         // Redirect to dashboard
-                        header("Location: index.php");
+                        $target = ($user['role'] === 'admin') ? 'dashboard.php' : 'index.php';
+                        header("Location: " . $target);
                         exit;
                     } else {
                         $error = "Your account is inactive. Please contact the administrator.";

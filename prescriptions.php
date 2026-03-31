@@ -14,7 +14,7 @@ require_once 'config/auth.php';
 
 // Page access control - only admin/doctor roles can access prescriptions page
 if (!hasRole(['admin', 'doctor'])) {
-    header('Location: index.php');
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -139,7 +139,7 @@ $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON p
     <div class="container-fluid">
         <div class="row mb-3">
             <div class="col-12">
-                <a href="index.php" class="btn btn-secondary btn-back">
+                <a href="dashboard.php" class="btn btn-secondary btn-back">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="d-inline-block">Prescriptions</h2>

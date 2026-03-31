@@ -15,7 +15,7 @@ require_once('lib/tcpdf/tcpdf.php');
 
 // Check if report ID is provided
 if (!isset($_GET['id'])) {
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit;
 }
 
@@ -31,7 +31,7 @@ $reportQuery = "SELECT r.*, p.name as patient_name, p.civil_id, p.mobile, p.file
 $reportResult = executeQuery($reportQuery);
 
 if (!$reportResult || $reportResult->num_rows === 0) {
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit;
 }
 

@@ -19,7 +19,7 @@ $token = isset($_GET['token']) ? $_GET['token'] : '';
 $doc = isset($_GET['doc']) ? $_GET['doc'] : '';
 
 if (empty($token) || empty($doc)) {
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit;
 }
 

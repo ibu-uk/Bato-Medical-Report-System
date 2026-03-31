@@ -20,7 +20,7 @@ require_once 'config/auth.php';
 // Require login and user-management permission to access this page
 requireLogin();
 if (!canManageUsers()) {
-    header('Location: index.php');
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -268,7 +268,7 @@ while ($row = $doctorsResult->fetch_assoc()) {
     <div class="container my-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <a href="index.php" class="btn btn-outline-secondary btn-sm mb-2">
+                <a href="dashboard.php" class="btn btn-outline-secondary btn-sm mb-2">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="mb-0">Manage Users</h2>

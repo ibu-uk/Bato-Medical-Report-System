@@ -59,7 +59,7 @@ if ($isStaff && $reportId > 0) {
     }
 } else {
     // No valid staff ID or token+doc provided
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit;
 }
 
@@ -95,7 +95,7 @@ $stmt->execute();
 $reportResult = $stmt->get_result();
 
 if (!$reportResult || $reportResult->num_rows === 0) {
-    header("Location: index.php");
+    header("Location: dashboard.php");
     exit;
 }
 

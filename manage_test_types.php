@@ -293,7 +293,7 @@ $result = executeQuery($query);
             <h1 class="mb-0">
                 <i class="fas fa-flask me-2"></i>Manage Test Types
             </h1>
-            <a href="index.php" class="btn btn-light">
+            <a href="dashboard.php" class="btn btn-light">
                 <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
             </a>
         </div>

@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body>
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <a href="index.php" class="back-link">
+            <a href="dashboard.php" class="back-link">
                 <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
             </a>
         </div>
@@ -239,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
                 
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                    <a href="index.php" class="btn btn-outline-secondary me-md-2">
+                    <a href="dashboard.php" class="btn btn-outline-secondary me-md-2">
                         <i class="fas fa-times me-1"></i> Cancel
                     </a>
                     <button type="submit" class="btn btn-primary">

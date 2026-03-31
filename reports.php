@@ -115,7 +115,7 @@ $reports = executeQuery($query);
     <div class="container-fluid">
         <div class="row mb-3">
             <div class="col-12">
-                <a href="index.php" class="btn btn-secondary btn-back">
+                <a href="dashboard.php" class="btn btn-secondary btn-back">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="d-inline-block">Medical Reports</h2>

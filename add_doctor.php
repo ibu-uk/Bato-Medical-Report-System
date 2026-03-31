@@ -8,7 +8,7 @@ require_once 'config/auth.php';
 // Require login and doctor-management permission to add doctors
 requireLogin();
 if (!canManageDoctors()) {
-    header('Location: index.php');
+    header('Location: dashboard.php');
     exit;
 }
 

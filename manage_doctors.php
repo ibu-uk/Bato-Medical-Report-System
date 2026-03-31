@@ -75,7 +75,7 @@ $doctors = executeQuery($query);
     <div class="container my-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="mb-0">Doctors</h3>
-            <a href="index.php" class="btn btn-secondary">
+            <a href="dashboard.php" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
             </a>
         </div>

@@ -102,7 +102,7 @@ if ($errorLog) {
 }
 
 echo "<div class='mt-4'>";
-echo "<a href='index.php' class='btn btn-primary'>Back to Dashboard</a> ";
+echo "<a href='dashboard.php' class='btn btn-primary'>Back to Dashboard</a> ";
 echo "<a href='view_report.php?id=1' class='btn btn-info'>Test on Report Page</a>";
 echo "</div>";
 ?>

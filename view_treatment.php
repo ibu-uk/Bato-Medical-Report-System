@@ -56,7 +56,7 @@ if ($isStaff && $treatmentId > 0) {
     }
 } else {
     // No valid staff ID or token+doc provided
-    header('Location: index.php');
+    header('Location: dashboard.php');
     exit;
 }
 

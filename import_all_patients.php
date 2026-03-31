@@ -302,5 +302,5 @@ ob_end_flush();
 ?>
 
 <div style="margin-top: 20px;">
-    <a href="index.php" style="padding: 10px 15px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Return to Medical Report System</a>
+    <a href="dashboard.php" style="padding: 10px 15px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Return to Medical Report System</a>
 </div>

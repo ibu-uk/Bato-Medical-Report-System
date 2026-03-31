@@ -88,7 +88,7 @@ $conn->close();
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <a href="index.php" class="btn btn-secondary btn-sm mb-2">
+                <a href="dashboard.php" class="btn btn-secondary btn-sm mb-2">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="mb-0"><i class="fas fa-link"></i> Manage Secure Report Links</h2>

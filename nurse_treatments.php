@@ -153,7 +153,7 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
     <div class="container-fluid">
         <div class="row mb-3">
             <div class="col-12">
-                <a href="index.php" class="btn btn-secondary btn-back">
+                <a href="dashboard.php" class="btn btn-secondary btn-back">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="d-inline-block">Nurse Treatments</h2>

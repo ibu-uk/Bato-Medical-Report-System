@@ -145,7 +145,7 @@ if (hasRole(['admin']) && isset($_GET['user_id']) && $_GET['user_id'] != $_SESSI
 <body>
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <a href="index.php" class="btn btn-secondary">
+            <a href="dashboard.php" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Dashboard
             </a>
             <?php if (hasRole(['admin']) && isset($_GET['user_id']) && $_GET['user_id'] != $_SESSION['user_id']): ?>

@@ -70,105 +70,14 @@ requireLogin();
     <!-- Main Content -->
     <div class="main-content">
         <div class="container-fluid py-4">
-        <!-- Dashboard Cards -->
-        <div class="row mb-4">
-            <!-- Total Patients Card (admin only) -->
-            <?php if (hasRole(['admin'])): ?>
-            <div class="col-md-3 mb-3">
-                <div class="card border-left-primary h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                    Total Patients</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                    <?php 
-                                    $result = $conn->query("SELECT COUNT(*) as total FROM patients");
-                                    $row = $result->fetch_assoc();
-                                    echo $row['total'];
-                                    ?>
-                                </div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-users fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="mb-1">Create Medical Report</h4>
+                <p class="text-muted mb-0">Fill the details below to generate a new patient report.</p>
             </div>
-            <?php endif; ?>
-
-            <!-- Total Reports Card -->
-            <div class="col-md-3 mb-3">
-                <div class="card border-left-success h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                    Total Reports</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                    <?php 
-                                    $result = $conn->query("SELECT COUNT(*) as total FROM reports");
-                                    $row = $result->fetch_assoc();
-                                    echo $row['total'];
-                                    ?>
-                                </div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-file-medical fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Total Prescriptions Card -->
-            <div class="col-md-3 mb-3">
-                <div class="card border-left-info h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                    Total Prescriptions</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                    <?php 
-                                    $result = $conn->query("SELECT COUNT(*) as total FROM prescriptions");
-                                    $row = $result->fetch_assoc();
-                                    echo $row['total'];
-                                    ?>
-                                </div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-prescription fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Total Nurse Treatments Card -->
-            <div class="col-md-3 mb-3">
-                <div class="card border-left-warning h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                    Nurse Treatments</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                    <?php 
-                                    $result = $conn->query("SELECT COUNT(*) as total FROM nurse_treatments");
-                                    $row = $result->fetch_assoc();
-                                    echo $row['total'];
-                                    ?>
-                                </div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-user-nurse fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <a href="dashboard.php" class="btn btn-outline-secondary">
+                <i class="fas fa-chart-line me-1"></i> Go to Dashboard
+            </a>
         </div>
 
         <div class="row">

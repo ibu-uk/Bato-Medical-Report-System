@@ -11,7 +11,7 @@ require_once 'config/auth.php';
 // Require login to access this page
 requireLogin();
 if (!canManagePatients()) {
-    header('Location: index.php');
+    header('Location: dashboard.php');
     exit;
 }
 

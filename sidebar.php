@@ -9,12 +9,14 @@
 
     <div class="sidebar-menu">
         <ul class="nav flex-column">
+            <?php if (hasRole(['admin'])): ?>
             <li class="nav-item">
-                <a href="index.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : ''; ?>">
+                <a href="dashboard.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : ''; ?>">
                     <i class="fas fa-home"></i>
                     <span>Dashboard</span>
                 </a>
             </li>
+            <?php endif; ?>
             
             <li class="nav-item">
                 <a href="reports.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'active' : ''; ?>">

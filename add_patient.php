@@ -14,7 +14,7 @@ require_once 'config/timezone.php';
 // Require login and patient management permission
 requireLogin();
 if (!canManagePatients()) {
-    header('Location: index.php');
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container my-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="mb-0">Add New Patient</h3>
-            <a href="index.php" class="btn btn-secondary">
+            <a href="dashboard.php" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
             </a>
         </div>
