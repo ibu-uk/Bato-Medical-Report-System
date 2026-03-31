@@ -6,19 +6,18 @@
 // Database credentials
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
-define('DB_PASS', 'TheSild@2025b');
+define('DB_PASS', '');
 define('DB_NAME', 'bato_medical');
 
 // Create database connection
 function getDbConnection() {
     $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-
+    $conn->autocommit(true);
+    
     // Check connection
-    if ($conn->connect_errno) {
+    if ($conn->connect_error) {
         die("Connection failed: " . $conn->connect_error);
     }
-
-    $conn->autocommit(true);
     
     return $conn;
 }
@@ -43,8 +42,6 @@ function executeInsert($sql) {
 // Sanitize input data
 function sanitize($data) {
     $conn = getDbConnection();
-    $safe = $conn->real_escape_string($data);
-    $conn->close();
-    return $safe;
+    return $conn->real_escape_string($data);
 }
 ?>

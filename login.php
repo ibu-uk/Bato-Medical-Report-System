@@ -247,14 +247,8 @@ if (password_verify($password, $user['password'])) {
                     <p class="ramadan-text-ar" lang="ar">
                         تتقدم عيادة باتو بأطيب التهاني والتبريكات بمناسبة حلول شهر رمضان المبارك. نسأل الله أن يعيده عليكم بالصحة والعافية. كل عام وأنتم بخير.
                     </p>
-                    <p class="ramadan-text-ar fw-semibold" lang="ar">
-                        عيد مبارك مقدماً! تقبل الله طاعاتكم.
-                    </p>
                     <p class="ramadan-text-en">
                         Bato Clinic extends warm wishes for Ramadan Mubarak. Wishing you health and wellness always.
-                    </p>
-                    <p class="ramadan-text-en fw-semibold">
-                        Eid Mubarak in advance! May your days be filled with peace and blessings.
                     </p>
                 </div>
                 <div class="modal-footer">

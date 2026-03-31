@@ -28,6 +28,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Check if user has permission to generate links
+if (!canGenerateLinks()) {
+    http_response_code(403); // Forbidden
+    echo json_encode([
+        'success' => false,
+        'message' => 'You do not have permission to generate patient links.'
+    ]);
+    exit;
+}
+
 // Get and validate input
 $patientId = isset($_POST['patient_id']) ? (int)$_POST['patient_id'] : 0;
 $reportId = isset($_POST['report_id']) ? (int)$_POST['report_id'] : 0;
@@ -97,14 +107,28 @@ try {
         throw new Exception('Failed to store token: ' . $stmt->error);
     }
 
-    // Generate the secure URL with the correct base path
-    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http');
-    $host = $_SERVER['HTTP_HOST'];
-    $scriptName = dirname($_SERVER['SCRIPT_NAME']); // Gets the directory of the current script
-    $basePath = rtrim(str_replace('\\', '/', $scriptName), '/'); // Normalize path for Windows
-    
-    // Build the full URL
-    $url = "$protocol://$host$basePath/patient_dashboard.php?token=" . urlencode($token);
+    // Generate a cleaner, shorter patient URL.
+    // Allow overriding host/path with PUBLIC_APP_URL (recommended for domain-based sharing).
+    $publicBaseUrl = getenv('PUBLIC_APP_URL');
+    if ($publicBaseUrl) {
+        $baseUrl = rtrim($publicBaseUrl, '/');
+    } else {
+        $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http');
+        $host = $_SERVER['HTTP_HOST'];
+        $scriptName = dirname($_SERVER['SCRIPT_NAME']);
+        $basePath = rtrim(str_replace('\\', '/', $scriptName), '/');
+        $baseUrl = "$protocol://$host$basePath";
+    }
+
+    // Keep full token in DB; expose shorter URL-safe token in query string.
+    $shortToken = encodeTokenForUrl($token);
+    $url = $baseUrl . '/patient_dashboard.php?t=' . urlencode($shortToken);
+
+    // Branded share text for staff to send to patients.
+    $shareTitle = 'Bato Clinic - Medical Reports';
+    $shareMessage = $shareTitle . "\n"
+        . 'Patient: ' . $patientName . "\n"
+        . 'Secure Link: ' . $url;
 
     // Log the action into user_activity_log so it appears in activity_logs.php
     // activity_type: generate_link, entity_id: patient ID, entity_name: patient name
@@ -116,8 +140,12 @@ try {
         'success' => true,
         'message' => 'Secure link generated successfully.',
         'token' => $token,
+        'short_token' => $shortToken,
         'url' => $url,
-        'expires' => $expiryDate
+        'expires' => $expiryDate,
+        'patient_name' => $patientName,
+        'share_title' => $shareTitle,
+        'share_message' => $shareMessage
     ]);
 
 } catch (Exception $e) {

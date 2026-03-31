@@ -9,8 +9,8 @@ header('Content-Type: application/json');
 require_once 'config/database.php';
 require_once 'config/auth.php';
 
-// Check if user is logged in and has admin/doctor role
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'doctor')) {
+// Require login and delete-patients permission
+if (!isLoggedIn() || !canDeletePatients()) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'You do not have permission to perform this action.']);
     exit();

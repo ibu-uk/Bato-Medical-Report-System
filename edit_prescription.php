@@ -6,6 +6,13 @@ session_start();
 require_once 'config/database.php';
 // Include authentication and role functions
 require_once 'config/auth.php';
+
+// Require login and edit-prescriptions permission
+requireLogin();
+if (!canEditPrescriptions()) {
+    header('Location: prescriptions.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -25,12 +32,6 @@ require_once 'config/auth.php';
 <body>
 
 <?php
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
-}
 
 // Check if prescription ID is provided
 if (!isset($_GET['id']) || empty($_GET['id'])) {

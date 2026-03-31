@@ -2,11 +2,12 @@
 // Start session
 session_start();
 
-// Include authentication helpers for role checking
+// Include authentication helpers
 require_once 'config/auth.php';
 
-// Only allow admin role to edit doctors
-if (!hasRole(['admin'])) {
+// Require login and doctor-management permission to edit doctors
+requireLogin();
+if (!canManageDoctors()) {
     header('Location: index.php');
     exit;
 }

@@ -14,8 +14,8 @@ require_once 'config/auth.php';
 // Require login to access this page
 requireLogin();
 
-// Only admin or doctor can access
-if (!hasRole(['admin', 'doctor'])) {
+// Require delete-reports permission
+if (!canDeleteReports()) {
     header('Location: reports.php');
     exit;
 }

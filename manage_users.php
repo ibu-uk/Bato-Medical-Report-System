@@ -17,8 +17,12 @@ if ($conn->connect_error) {
 // Include authentication helpers
 require_once 'config/auth.php';
 
-// Require admin role to access this page
-requireRole('admin');
+// Require login and user-management permission to access this page
+requireLogin();
+if (!canManageUsers()) {
+    header('Location: index.php');
+    exit;
+}
 
 // Process form submissions
 $message = '';
@@ -34,6 +38,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $role = sanitize($_POST['role']);
         $doctorId = ($role === 'doctor' && isset($_POST['doctor_id'])) ? sanitize($_POST['doctor_id']) : null;
         $isActive = isset($_POST['is_active']) ? 1 : 0;
+        // Per-user permissions (checkboxes)
+        $canEditReports         = isset($_POST['can_edit_reports']) ? 1 : 0;
+        $canDeleteReports       = isset($_POST['can_delete_reports']) ? 1 : 0;
+        $canEditPrescriptions   = isset($_POST['can_edit_prescriptions']) ? 1 : 0;
+        $canDeletePrescriptions = isset($_POST['can_delete_prescriptions']) ? 1 : 0;
+        $canEditTreatments      = isset($_POST['can_edit_treatments']) ? 1 : 0;
+        $canDeleteTreatments    = isset($_POST['can_delete_treatments']) ? 1 : 0;
+        $canGenerateLinks       = isset($_POST['can_generate_links']) ? 1 : 0;
+        $canManagePatients      = isset($_POST['can_manage_patients']) ? 1 : 0;
+        $canDeletePatients      = isset($_POST['can_delete_patients']) ? 1 : 0;
+        $canManageDoctors       = isset($_POST['can_manage_doctors']) ? 1 : 0;
+        $canManageUsers         = isset($_POST['can_manage_users']) ? 1 : 0;
         $password = isset($_POST['password']) ? $_POST['password'] : '';
         
         // Validate input
@@ -59,17 +75,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $messageType = "danger";
                     } else {
                         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                        $insertQuery = "INSERT INTO users (username, password, full_name, email, role, doctor_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                        $insertQuery = "INSERT INTO users (username, password, full_name, email, role, 
+                                                            can_edit_reports, can_delete_reports,
+                                                            can_edit_prescriptions, can_delete_prescriptions,
+                                                            can_edit_treatments, can_delete_treatments,
+                                                            can_generate_links,
+                                                            can_manage_patients, can_delete_patients,
+                                                            can_manage_doctors, can_manage_users,
+                                                            doctor_id, is_active)
+                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $conn->prepare($insertQuery);
-                        $stmt->bind_param("sssssii", $username, $hashedPassword, $fullName, $email, $role, $doctorId, $isActive);
-                        
-                        if ($stmt->execute()) {
-    $message = "User created successfully";
-    $messageType = "success";
-} else {
-    $message = "Error creating user: " . $conn->error;
-    $messageType = "danger";
-}
+                        if (!$stmt) {
+                            $message = "Error preparing user insert: " . $conn->error;
+                            $messageType = "danger";
+                        } else {
+                            $stmt->bind_param(
+                                "sssssiiiiiiiiiiii",
+                                $username,
+                                $hashedPassword,
+                                $fullName,
+                                $email,
+                                $role,
+                                $canEditReports,
+                                $canDeleteReports,
+                                $canEditPrescriptions,
+                                $canDeletePrescriptions,
+                                $canEditTreatments,
+                                $canDeleteTreatments,
+                                $canGenerateLinks,
+                                $canManagePatients,
+                                $canDeletePatients,
+                                $canManageDoctors,
+                                $canManageUsers,
+                                $doctorId,
+                                $isActive
+                            );
+                            
+                            if ($stmt->execute()) {
+                                $message = "User created successfully";
+                                $messageType = "success";
+                            } else {
+                                $message = "Error creating user: " . $conn->error;
+                                $messageType = "danger";
+                            }
+                        }
 
                     }
                 }
@@ -78,23 +127,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!empty($password)) {
                     // Update with new password
                     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                    $updateQuery = "UPDATE users SET username = ?, password = ?, full_name = ?, email = ?, role = ?, doctor_id = ?, is_active = ? WHERE id = ?";
+                    $updateQuery = "UPDATE users SET username = ?, password = ?, full_name = ?, email = ?, role = ?,
+                                        can_edit_reports = ?, can_delete_reports = ?,
+                                        can_edit_prescriptions = ?, can_delete_prescriptions = ?,
+                                        can_edit_treatments = ?, can_delete_treatments = ?,
+                                        can_generate_links = ?,
+                                        can_manage_patients = ?, can_delete_patients = ?,
+                                        can_manage_doctors = ?, can_manage_users = ?,
+                                        doctor_id = ?, is_active = ?
+                                   WHERE id = ?";
                     $stmt = $conn->prepare($updateQuery);
-                    $stmt->bind_param("sssssiis", $username, $hashedPassword, $fullName, $email, $role, $doctorId, $isActive, $userId);
+                    if (!$stmt) {
+                        $message = "Error preparing user update (with password): " . $conn->error;
+                        $messageType = "danger";
+                    } else {
+                        $stmt->bind_param(
+                            "sssssiiiiiiiiiiiiii",
+                            $username,
+                            $hashedPassword,
+                            $fullName,
+                            $email,
+                            $role,
+                            $canEditReports,
+                            $canDeleteReports,
+                            $canEditPrescriptions,
+                            $canDeletePrescriptions,
+                            $canEditTreatments,
+                            $canDeleteTreatments,
+                            $canGenerateLinks,
+                            $canManagePatients,
+                            $canDeletePatients,
+                            $canManageDoctors,
+                            $canManageUsers,
+                            $doctorId,
+                            $isActive,
+                            $userId
+                        );
+                    }
                 } else {
                     // Update without changing password
-                    $updateQuery = "UPDATE users SET username = ?, full_name = ?, email = ?, role = ?, doctor_id = ?, is_active = ? WHERE id = ?";
+                    $updateQuery = "UPDATE users SET username = ?, full_name = ?, email = ?, role = ?,
+                                        can_edit_reports = ?, can_delete_reports = ?,
+                                        can_edit_prescriptions = ?, can_delete_prescriptions = ?,
+                                        can_edit_treatments = ?, can_delete_treatments = ?,
+                                        can_generate_links = ?,
+                                        can_manage_patients = ?, can_delete_patients = ?,
+                                        can_manage_doctors = ?, can_manage_users = ?,
+                                        doctor_id = ?, is_active = ?
+                                   WHERE id = ?";
                     $stmt = $conn->prepare($updateQuery);
-                    $stmt->bind_param("ssssiis", $username, $fullName, $email, $role, $doctorId, $isActive, $userId);
+                    if (!$stmt) {
+                        $message = "Error preparing user update (no password): " . $conn->error;
+                        $messageType = "danger";
+                    } else {
+                        $stmt->bind_param(
+                            "ssssiiiiiiiiiiiiii",
+                            $username,
+                            $fullName,
+                            $email,
+                            $role,
+                            $canEditReports,
+                            $canDeleteReports,
+                            $canEditPrescriptions,
+                            $canDeletePrescriptions,
+                            $canEditTreatments,
+                            $canDeleteTreatments,
+                            $canGenerateLinks,
+                            $canManagePatients,
+                            $canDeletePatients,
+                            $canManageDoctors,
+                            $canManageUsers,
+                            $doctorId,
+                            $isActive,
+                            $userId
+                        );
+                    }
                 }
                 
-                if ($stmt->execute()) {
-    $message = "User updated successfully";
-    $messageType = "success";
-} else {
-    $message = "Error updating user: " . $conn->error;
-    $messageType = "danger";
-}
+                if ($stmt && $stmt->execute()) {
+                    $message = "User updated successfully";
+                    $messageType = "success";
+                } elseif ($stmt) {
+                    $message = "Error updating user: " . $conn->error;
+                    $messageType = "danger";
+                }
 
             }
         }
@@ -292,6 +408,59 @@ while ($row = $doctorsResult->fetch_assoc()) {
                                 Active
                             </label>
                         </div>
+
+                        <hr>
+                        <h6>Permissions</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_edit_reports" name="can_edit_reports">
+                                    <label class="form-check-label" for="can_edit_reports">Can edit reports</label>
+                                </div>
+                                <div class="form-check">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_manage_doctors" name="can_manage_doctors">
+                                    <label class="form-check-label" for="can_manage_doctors">Can manage doctors  label>
+                                </      <input class="form-check-input" type="checkbox" id="can_delete_reports" name="can_delete_reports">
+                             /   >
+                            <div    <label class="form-check-label" for="can_delete_reports">Can delete reports</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_edit_prescriptions" name="can_edit_prescriptions">
+                                    <label class="form-check-label" for="can_edit_prescriptions">Can edit prescriptions</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_generate_links" name="can_generate_links">
+                                    <label class="form-check-label" for="can_generate_links">Can generate patient links</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_manage_patients" name="can_manage_patients">
+                                    <label class="form-check-label" for="can_manage_patients">Can manage patients</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_delete_prescriptions" name="can_delete_prescriptions">
+                                    <label class="form-check-label" for="can_delete_prescriptions">Can delete prescriptions</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_edit_treatments" name="can_edit_treatments">
+                                    <label class="form-check-label" for="can_edit_treatments">Can edit nurse treatments</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_delete_treatments" name="can_delete_treatments">
+                                    <label class="form-check-label" for="can_delete_treatments">Can delete nurse treatments</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_delete_patients" name="can_delete_patients">
+                                    <label class="form-check-label" for="can_delete_patients">Can delete patients</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="can_manage_users" name="can_manage_users">
+                                    <label class="form-check-label" for="can_manage_users">Can manage users</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -347,6 +516,18 @@ while ($row = $doctorsResult->fetch_assoc()) {
             document.getElementById('userForm').reset();
             document.getElementById('password').required = true;
             document.getElementById('passwordHelp').style.display = 'none';
+            // Reset permissions to unchecked by default
+            document.getElementById('can_edit_reports').checked = false;
+            document.getElementById('can_delete_reports').checked = false;
+            document.getElementById('can_edit_prescriptions').checked = false;
+            document.getElementById('can_delete_prescriptions').checked = false;
+            document.getElementById('can_edit_treatments').checked = false;
+            document.getElementById('can_delete_treatments').checked = false;
+            document.getElementById('can_generate_links').checked = false;
+            document.getElementById('can_manage_patients').checked = false;
+            document.getElementById('can_delete_patients').checked = false;
+            document.getElementById('can_manage_doctors').checked = false;
+            document.getElementById('can_manage_users').checked = false;
             toggleDoctorSelect();
         }
         
@@ -363,7 +544,32 @@ while ($row = $doctorsResult->fetch_assoc()) {
             document.getElementById('email').value = user.email;
             document.getElementById('role').value = user.role;
             document.getElementById('doctor_id').value = user.doctor_id || '';
-            document.getElementById('is_active').checked = user.is_active == 1;
+
+            var isActiveEl = document.getElementById('is_active');
+            if (isActiveEl) {
+                isActiveEl.checked = (user.is_active == 1);
+            }
+
+            // Helper to safely set checkbox state if element exists
+            function setCheckbox(id, value) {
+                var el = document.getElementById(id);
+                if (el) {
+                    el.checked = (value == 1);
+                }
+            }
+
+            // Permissions
+            setCheckbox('can_edit_reports',         user.can_edit_reports);
+            setCheckbox('can_delete_reports',       user.can_delete_reports);
+            setCheckbox('can_edit_prescriptions',   user.can_edit_prescriptions);
+            setCheckbox('can_delete_prescriptions', user.can_delete_prescriptions);
+            setCheckbox('can_edit_treatments',      user.can_edit_treatments);
+            setCheckbox('can_delete_treatments',    user.can_delete_treatments);
+            setCheckbox('can_generate_links',       user.can_generate_links);
+            setCheckbox('can_manage_patients',      user.can_manage_patients);
+            setCheckbox('can_delete_patients',      user.can_delete_patients);
+            setCheckbox('can_manage_doctors',       user.can_manage_doctors);
+            setCheckbox('can_manage_users',         user.can_manage_users);
             
             toggleDoctorSelect();
             

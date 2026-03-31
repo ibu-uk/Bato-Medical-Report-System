@@ -29,6 +29,84 @@ function hasRole($roles) {
     return isset($_SESSION['role']) && in_array($_SESSION['role'], $roles);
 }
 
+// Per-user permission helpers
+function canEditReports() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_edit_reports'])
+    );
+}
+
+function canDeleteReports() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_delete_reports'])
+    );
+}
+
+function canEditPrescriptions() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_edit_prescriptions'])
+    );
+}
+
+function canDeletePrescriptions() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_delete_prescriptions'])
+    );
+}
+
+function canEditTreatments() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_edit_treatments'])
+    );
+}
+
+function canDeleteTreatments() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_delete_treatments'])
+    );
+}
+
+function canGenerateLinks() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_generate_links'])
+    );
+}
+
+function canManagePatients() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_manage_patients'])
+    );
+}
+
+function canDeletePatients() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_delete_patients'])
+    );
+}
+
+function canManageDoctors() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_manage_doctors'])
+    );
+}
+
+function canManageUsers() {
+    return isLoggedIn() && (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        !empty($_SESSION['can_manage_users'])
+    );
+}
+
 // Function to require specific role
 function requireRole($roles) {
     if (!hasRole($roles)) {

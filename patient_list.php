@@ -10,6 +10,10 @@ require_once 'config/auth.php';
 
 // Require login to access this page
 requireLogin();
+if (!canManagePatients()) {
+    header('Location: index.php');
+    exit;
+}
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -226,7 +230,7 @@ $result = $stmt->get_result();
         <div class="container-fluid py-4">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="mb-0">Patient List</h2>
-                <?php if (hasRole(['admin', 'receptionist'])): ?>
+                <?php if (canManagePatients()): ?>
                 <a href="add_patient.php" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>Add New Patient
                 </a>
@@ -303,10 +307,12 @@ $result = $stmt->get_result();
                                                     <a href="view_patient.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-info" title="View">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
-                                                    <?php if (hasRole(['admin'])): ?>
+                                                    <?php if (canManagePatients()): ?>
                                                     <a href="edit_patient.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-primary" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
+                                                    <?php endif; ?>
+                                                    <?php if (canDeletePatients()): ?>
                                                     <button type="button" class="btn btn-sm btn-danger delete-patient" data-id="<?php echo $row['id']; ?>" title="Delete">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
@@ -516,10 +522,12 @@ $result = $stmt->get_result();
                             <a href="view_patient.php?id=${patient.id}" class="btn btn-sm btn-info" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <?php if (hasRole(['admin'])): ?>
+                            <?php if (canManagePatients()): ?>
                             <a href="edit_patient.php?id=${patient.id}" class="btn btn-sm btn-primary" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
+                            <?php endif; ?>
+                            <?php if (canDeletePatients()): ?>
                             <button class="btn btn-sm btn-danger delete-patient" data-id="${patient.id}" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>

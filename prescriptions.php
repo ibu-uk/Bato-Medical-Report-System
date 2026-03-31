@@ -12,7 +12,7 @@ require_once 'config/database.php';
 // Include authentication and role functions
 require_once 'config/auth.php';
 
-// Page access control - only admin and doctor can access prescriptions
+// Page access control - only admin/doctor roles can access prescriptions page
 if (!hasRole(['admin', 'doctor'])) {
     header('Location: index.php');
     exit;
@@ -20,6 +20,11 @@ if (!hasRole(['admin', 'doctor'])) {
 
 // Handle form submission for deleting prescription
 if (isset($_POST['delete_prescription']) && isset($_POST['csrf_token']) && $_POST['csrf_token'] === $_SESSION['csrf_token']) {
+    if (!canDeletePrescriptions()) {
+        $_SESSION['error'] = "You do not have permission to delete prescriptions.";
+        header('Location: prescriptions.php');
+        exit;
+    }
     $prescription_id = sanitize($_POST['prescription_id']);
     // Fetch patient name for logging before deletion
     $patient_name = '';
@@ -146,7 +151,7 @@ $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON p
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">All Prescriptions</h5>
-                        <?php if (hasRole(['admin', 'doctor'])): ?>
+                        <?php if (canEditPrescriptions()): ?>
                         <a href="add_prescription.php" class="btn btn-primary">
                             <i class="fas fa-plus"></i> New Prescription
                         </a>
@@ -230,9 +235,11 @@ $result = executeQuery($query);
                                 // View is allowed for all roles that can access this page
                                 echo "<a href='view_prescription.php?id={$row['id']}' class='btn btn-sm btn-outline-primary' title='View' target='_blank'><i class='fas fa-eye'></i></a> ";
 
-                                // Only admin/doctor can edit or delete prescriptions
-                                if (hasRole(['admin', 'doctor'])) {
+                                // Edit / Delete based on per-user permissions
+                                if (canEditPrescriptions()) {
                                     echo "<a href='edit_prescription.php?id={$row['id']}' class='btn btn-sm btn-outline-warning' title='Edit'><i class='fas fa-edit'></i></a> ";
+                                }
+                                if (canDeletePrescriptions()) {
                                     // Delete form with CSRF protection
                                     echo "<form id='deleteForm{$row['id']}' method='POST' style='display:inline;'>";
                                     echo "<input type='hidden' name='prescription_id' value='{$row['id']}'>";

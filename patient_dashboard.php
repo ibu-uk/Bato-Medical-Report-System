@@ -8,12 +8,17 @@ session_start();
 require_once 'config/database.php';
 require_once 'config/secure_links.php';
 
-// Check if token exists
-if (!isset($_GET['token']) || empty(trim($_GET['token']))) {
-    die('Error: No access token provided.');
+// Check if token exists (supports both legacy ?token= and shorter ?t= links)
+$token = '';
+if (isset($_GET['token']) && !empty(trim($_GET['token']))) {
+    $token = trim($_GET['token']);
+} elseif (isset($_GET['t']) && !empty(trim($_GET['t']))) {
+    $token = decodeUrlToken(trim($_GET['t']));
 }
 
-$token = trim($_GET['token']);
+if (empty($token)) {
+    die('Error: No valid access token provided.');
+}
 
 // Validate the token and get patient ID
 $patientData = validateReportToken($token);
@@ -290,6 +295,38 @@ $conn->close();
             margin-right: 8px;
         }
         
+        .clinic-brand-banner {
+            background: #ececec;
+            color: #111;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            border: 1px solid #d8d8d8;
+        }
+        
+        .clinic-brand-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        
+        .clinic-brand-subtitle {
+            font-size: 0.9rem;
+            color: #555;
+            margin-top: 2px;
+        }
+        
+        .clinic-trust-note {
+            background: #f6f6f6;
+            color: #222;
+            border: 1px solid #dddddd;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            margin-bottom: 18px;
+        }
+        
         /* Responsive adjustments */
         @media (max-width: 768px) {
             body {
@@ -377,6 +414,19 @@ $conn->close();
 </head>
 <body>
     <div class="container-fluid">
+        <div class="clinic-brand-banner d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <div class="clinic-brand-title"><i class="fas fa-clinic-medical me-2"></i>BATO CLINIC</div>
+                <div class="clinic-brand-subtitle">Official Patient Portal</div>
+            </div>
+            <span class="badge text-bg-dark fw-semibold px-3 py-2">Secure Medical Link</span>
+        </div>
+
+        <div class="clinic-trust-note">
+            <i class="fas fa-shield-alt me-2"></i>
+            This secure page belongs to <strong>BATO CLINIC</strong>. Do not share this link with anyone else.
+        </div>
+
         <!-- Patient Information Card -->
         <div class="row mb-4">
             <div class="col-12">

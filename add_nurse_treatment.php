@@ -6,7 +6,12 @@ session_start();
 require_once 'config/database.php';
 require_once 'config/auth.php';
 
-// No authentication check needed
+// Require login and edit-treatments permission
+requireLogin();
+if (!canEditTreatments()) {
+    header('Location: nurse_treatments.php');
+    exit;
+}
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

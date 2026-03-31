@@ -12,8 +12,9 @@ if (!isset($conn) || !$conn) {
 $conn->autocommit(true);
 require_once 'config/auth.php';
 
-// Only admin or doctor can access
-if (!hasRole(['admin', 'doctor'])) {
+// Require login and edit-reports permission
+requireLogin();
+if (!canEditReports()) {
     header('Location: reports.php');
     exit;
 }

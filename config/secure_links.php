@@ -17,6 +17,51 @@ function generateSecureToken() {
 }
 
 /**
+ * Encode a 64-char hex token into a shorter URL-safe base64 string.
+ * 64 hex chars -> 32 bytes -> 43 base64url chars (without padding).
+ *
+ * @param string $tokenHex
+ * @return string
+ */
+function encodeTokenForUrl($tokenHex) {
+    if (!is_string($tokenHex) || !preg_match('/^[a-f0-9]{64}$/i', $tokenHex)) {
+        return '';
+    }
+
+    $raw = @hex2bin($tokenHex);
+    if ($raw === false) {
+        return '';
+    }
+
+    return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+}
+
+/**
+ * Decode URL-safe base64 token back to the original 64-char hex token.
+ *
+ * @param string $tokenUrl
+ * @return string Empty string on invalid input.
+ */
+function decodeUrlToken($tokenUrl) {
+    if (!is_string($tokenUrl) || $tokenUrl === '') {
+        return '';
+    }
+
+    $normalized = strtr($tokenUrl, '-_', '+/');
+    $padding = strlen($normalized) % 4;
+    if ($padding > 0) {
+        $normalized .= str_repeat('=', 4 - $padding);
+    }
+
+    $raw = base64_decode($normalized, true);
+    if ($raw === false || strlen($raw) !== 32) {
+        return '';
+    }
+
+    return bin2hex($raw);
+}
+
+/**
  * Create a secure report link
  * 
  * @param int $patientId Patient ID (internal reference only)

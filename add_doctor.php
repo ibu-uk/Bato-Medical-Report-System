@@ -2,11 +2,12 @@
 // Start session
 session_start();
 
-// Include authentication helpers for role checking
+// Include authentication helpers
 require_once 'config/auth.php';
 
-// Only allow admin role to add doctors
-if (!hasRole(['admin'])) {
+// Require login and doctor-management permission to add doctors
+requireLogin();
+if (!canManageDoctors()) {
     header('Location: index.php');
     exit;
 }

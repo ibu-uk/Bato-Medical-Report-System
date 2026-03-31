@@ -11,6 +11,13 @@ require_once 'config/database.php';
 require_once 'config/auth.php';
 require_once 'config/timezone.php';
 
+// Require login and patient management permission
+requireLogin();
+if (!canManagePatients()) {
+    header('Location: index.php');
+    exit;
+}
+
 // Initialize variables
 $message = '';
 $messageType = '';

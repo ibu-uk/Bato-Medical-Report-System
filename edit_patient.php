@@ -8,6 +8,13 @@ require_once 'config/auth.php';
 require_once 'config/timezone.php';
 require_once 'config/helpers.php';
 
+// Require login and patient-management permission
+requireLogin();
+if (!canManagePatients()) {
+    header('Location: patient_list.php');
+    exit;
+}
+
 // Get database connection
 $conn = getDbConnection();
 

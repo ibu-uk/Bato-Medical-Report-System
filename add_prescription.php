@@ -5,8 +5,15 @@ session_start();
 // Include database configuration
 require_once 'config/database.php';
 
-// No authentication check needed
+// Authentication and permissions
 require_once 'config/auth.php';
+
+// Require login and edit-prescriptions permission
+requireLogin();
+if (!canEditPrescriptions()) {
+    header('Location: prescriptions.php');
+    exit;
+}
 
 // For debugging - see form data
 // Uncomment for debugging

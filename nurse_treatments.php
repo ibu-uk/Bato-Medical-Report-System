@@ -9,7 +9,7 @@ require_once 'config/auth.php';
 
 // Handle form submission for deleting treatment
 if (isset($_POST['delete_treatment'])) {
-    if (!hasRole(['admin'])) {
+    if (!canDeleteTreatments()) {
         $_SESSION['error'] = "You do not have permission to delete treatment records.";
         header('Location: nurse_treatments.php');
         exit;
@@ -165,7 +165,7 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">All Treatment Records</h5>
-                        <?php if (hasRole(['admin', 'nurse'])): ?>
+                        <?php if (canEditTreatments()): ?>
                         <a href="add_nurse_treatment.php" class="btn btn-primary">
                             <i class="fas fa-plus"></i> New Treatment Record
                         </a>
@@ -264,12 +264,12 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
                                         <a href='view_treatment.php?id={$row['id']}' class='btn btn-sm btn-outline-primary me-1' title='View'>
                                             <i class='fas fa-eye'></i>
                                         </a>";
-                                        if (hasRole(['admin', 'nurse'])) {
+                                        if (canEditTreatments()) {
                                             echo "<a href='edit_nurse_treatment.php?id={$row['id']}' class='btn btn-sm btn-outline-warning me-1' title='Edit'>
                                                 <i class='fas fa-edit'></i>
                                             </a>";
                                         }
-                                        if (hasRole(['admin'])) {
+                                        if (canDeleteTreatments()) {
                                             echo "<button type='button' class='btn btn-sm btn-outline-danger' data-bs-toggle='modal' data-bs-target='#deleteModal{$row['id']}' title='Delete'>
                                                 <i class='fas fa-trash'></i>
                                             </button>";

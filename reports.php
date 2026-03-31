@@ -127,7 +127,7 @@ $reports = executeQuery($query);
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">All Reports</h5>
-                        <?php if (hasRole(['admin', 'doctor'])): ?>
+                        <?php if (canEditReports()): ?>
                         <a href="index.php" class="btn btn-primary">
                             <i class="fas fa-plus"></i> New Report
                         </a>
@@ -156,7 +156,7 @@ $reports = executeQuery($query);
                                         <th>Doctor</th>
                                         <th>Created By</th>
                                         <th>Created At</th>
-                                        <?php if (hasRole(['admin', 'receptionist'])): ?>
+                                        <?php if (canGenerateLinks()): ?>
                                         <th>Link Status</th>
                                         <?php endif; ?>
                                         <th>Actions</th>
@@ -175,8 +175,8 @@ $reports = executeQuery($query);
                                             echo "<td>{$row['generated_by']}</td>";
                                             echo "<td>" . date('Y-m-d H:i', strtotime($row['created_at'])) . "</td>";
 
-                                            // Link status column: show whether patient already has an active link (only admin & receptionist)
-                                            if (hasRole(['admin', 'receptionist'])) {
+                                            // Link status column: show whether patient already has an active link (only users allowed to generate links)
+                                            if (canGenerateLinks()) {
                                                 if (!empty($row['active_links']) && (int)$row['active_links'] > 0) {
                                                     echo "<td><span class='badge bg-success'>Link Active</span></td>";
                                                 } else {
@@ -191,21 +191,21 @@ $reports = executeQuery($query);
                                                     <i class="fas fa-eye"></i>
                                                 </a>';
 
-                                            // Admin and receptionist can generate links
-                                            if (hasRole(['admin', 'receptionist'])) {
+                                            // Users with link-generation permission can generate links
+                                            if (canGenerateLinks()) {
                                                 echo '<a href="javascript:void(0);" onclick="generatePatientLink(' . $row['patient_id'] . ')" class="btn btn-sm btn-outline-success" title="Generate Patient Link">
                                                         <i class="fas fa-link"></i>
                                                     </a>';
                                             }
 
-                                            // Admin and doctor can edit; only admin can delete
-                                            if (hasRole(['admin', 'doctor'])) {
+                                            // Use per-user permissions for edit/delete
+                                            if (canEditReports()) {
                                                 echo '<a href="edit_report.php?id=' . $row['id'] . '" class="btn btn-sm btn-outline-warning" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </a>';
                                             }
 
-                                            if (hasRole(['admin'])) {
+                                            if (canDeleteReports()) {
                                                 echo ' <button class="btn btn-sm btn-outline-danger" onclick="if(confirm(\'Are you sure you want to delete this report?\')) { window.location.href=\'delete_report.php?id=' . $row['id'] . '\'; }" title="Delete">
                                                         <i class="fas fa-trash"></i>
                                                     </button>';
@@ -352,11 +352,24 @@ $reports = executeQuery($query);
                                         </ul>
                                     </div>
                                     <div class="mb-3">
+                                        <label class="form-label"><strong>Patient Name:</strong></label>
+                                        <input type="text" class="form-control" value="${data.patient_name || 'N/A'}" readonly>
+                                    </div>
+                                    <div class="mb-3">
                                         <label class="form-label"><strong>Patient Dashboard Link:</strong></label>
                                         <div class="input-group">
                                             <input type="text" class="form-control" value="${data.url}" id="patientLinkInput" readonly>
                                             <button class="btn btn-outline-primary" type="button" onclick="copyToClipboard('patientLinkInput')">
                                                 <i class="fas fa-copy"></i> Copy
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Share Message:</strong></label>
+                                        <div class="input-group">
+                                            <textarea class="form-control" id="patientShareMessageInput" rows="3" readonly>${data.share_message || ('Bato Clinic - Medical Reports\nSecure Link: ' + data.url)}</textarea>
+                                            <button class="btn btn-outline-success" type="button" onclick="copyToClipboard('patientShareMessageInput')">
+                                                <i class="fas fa-copy"></i> Copy Message
                                             </button>
                                         </div>
                                     </div>

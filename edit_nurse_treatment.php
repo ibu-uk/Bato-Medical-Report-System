@@ -62,8 +62,8 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Only allow admin or nurse users to access this page
-if (!hasRole(['admin', 'nurse'])) {
+// Only allow users with edit-treatments permission to access this page
+if (!canEditTreatments()) {
     $_SESSION['error'] = "You do not have permission to edit treatment records.";
     header('Location: nurse_treatments.php');
     exit;
