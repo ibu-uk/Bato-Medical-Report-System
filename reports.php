@@ -32,6 +32,18 @@ $query = "SELECT r.id, r.report_date, r.created_at, r.patient_id,
           ) rl ON rl.patient_id = r.patient_id
           ORDER BY r.created_at DESC";
 $reports = executeQuery($query);
+
+$totalReports = 0;
+$totalReportsResult = executeQuery("SELECT COUNT(*) AS total FROM reports");
+if ($totalReportsResult && $row = $totalReportsResult->fetch_assoc()) {
+    $totalReports = (int)$row['total'];
+}
+
+$reportsToday = 0;
+$reportsTodayResult = executeQuery("SELECT COUNT(*) AS total FROM reports WHERE report_date = CURDATE()");
+if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
+    $reportsToday = (int)$row['total'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -109,6 +121,38 @@ $reports = executeQuery($query);
             background-color: #6c757d;
             border-color: #6c757d;
         }
+        .summary-card {
+            border: 1px solid #cfe0ef;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #f7fbff 0%, #eef5fc 100%);
+            box-shadow: 0 8px 18px rgba(18, 61, 101, 0.12);
+            padding: 0.9rem 1rem;
+            height: 100%;
+        }
+        .summary-label {
+            color: #5b6f84;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.2rem;
+        }
+        .summary-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #143f64;
+            line-height: 1.1;
+        }
+        .summary-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 2px solid #9db9d5;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            color: #1c5785;
+        }
     </style>
 </head>
 <body>
@@ -119,6 +163,27 @@ $reports = executeQuery($query);
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="d-inline-block">Medical Reports</h2>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="summary-card d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="summary-label">Total Reports</div>
+                        <div class="summary-value"><?php echo $totalReports; ?></div>
+                    </div>
+                    <span class="summary-icon"><i class="fas fa-file-medical"></i></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="summary-card d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="summary-label">Reports Today</div>
+                        <div class="summary-value"><?php echo $reportsToday; ?></div>
+                    </div>
+                    <span class="summary-icon"><i class="fas fa-calendar-day"></i></span>
+                </div>
             </div>
         </div>
 
@@ -249,6 +314,7 @@ $reports = executeQuery($query);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <?php include_once 'includes/support_ticket_widget.php'; ?>
     
     <script>
     // Auto-dismiss success alerts after a short delay

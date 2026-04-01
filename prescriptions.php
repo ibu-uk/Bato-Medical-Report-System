@@ -58,6 +58,18 @@ $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON p
     header('Location: prescriptions.php');
     exit;
 }
+
+$totalPrescriptions = 0;
+$totalPrescriptionsResult = executeQuery("SELECT COUNT(*) AS total FROM prescriptions");
+if ($totalPrescriptionsResult && $row = $totalPrescriptionsResult->fetch_assoc()) {
+    $totalPrescriptions = (int)$row['total'];
+}
+
+$prescriptionsToday = 0;
+$prescriptionsTodayResult = executeQuery("SELECT COUNT(*) AS total FROM prescriptions WHERE prescription_date = CURDATE()");
+if ($prescriptionsTodayResult && $row = $prescriptionsTodayResult->fetch_assoc()) {
+    $prescriptionsToday = (int)$row['total'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -133,6 +145,38 @@ $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON p
             font-size: 0.8rem;
             letter-spacing: 0.5px;
         }
+        .summary-card {
+            border: 1px solid #cfe0ef;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #f7fbff 0%, #eef5fc 100%);
+            box-shadow: 0 8px 18px rgba(18, 61, 101, 0.12);
+            padding: 0.9rem 1rem;
+            height: 100%;
+        }
+        .summary-label {
+            color: #5b6f84;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.2rem;
+        }
+        .summary-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #143f64;
+            line-height: 1.1;
+        }
+        .summary-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 2px solid #9db9d5;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            color: #1c5785;
+        }
     </style>
 </head>
 <body style="padding: 20px; margin: 0;">
@@ -143,6 +187,27 @@ $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON p
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="d-inline-block">Prescriptions</h2>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="summary-card d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="summary-label">Total Prescriptions</div>
+                        <div class="summary-value"><?php echo $totalPrescriptions; ?></div>
+                    </div>
+                    <span class="summary-icon"><i class="fas fa-prescription"></i></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="summary-card d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="summary-label">Prescriptions Today</div>
+                        <div class="summary-value"><?php echo $prescriptionsToday; ?></div>
+                    </div>
+                    <span class="summary-icon"><i class="fas fa-calendar-day"></i></span>
+                </div>
             </div>
         </div>
 
@@ -343,6 +408,7 @@ $result = executeQuery($query);
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <?php include_once 'includes/support_ticket_widget.php'; ?>
     
     <script>
         $(document).ready(function() {

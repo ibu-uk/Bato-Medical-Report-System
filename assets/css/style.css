@@ -244,6 +244,40 @@ body.sidebar-collapsed {
     font-size: 1.25rem;
 }
 
+.helpdesk-fab {
+    position: fixed;
+    top: 72px;
+    right: 18px;
+    z-index: 1200;
+    border: none;
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    background: linear-gradient(135deg, #0f4f79 0%, #1f6f9f 100%);
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    box-shadow: 0 8px 18px rgba(10, 43, 69, 0.28);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.helpdesk-fab:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 22px rgba(10, 43, 69, 0.34);
+}
+
+.helpdesk-fab i {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Main Content */
 .main-content {
     margin-top: 60px;
@@ -295,6 +329,17 @@ body.sidebar-collapsed {
     
     body.sidebar-collapsed .main-content::before {
         display: block;
+    }
+
+    .helpdesk-fab {
+        top: auto;
+        bottom: 18px;
+        right: 14px;
+        padding: 0.55rem 0.75rem;
+    }
+
+    .helpdesk-fab span {
+        display: none;
     }
 }
 

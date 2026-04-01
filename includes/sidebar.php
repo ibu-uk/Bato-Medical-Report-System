@@ -171,9 +171,7 @@
                         });
                     });
 
-                    document.getElementById('helpCenterLink').addEventListener('click', function(e) {
-                        e.preventDefault();
-
+                    function openSupportTicketModal() {
                         const issueFormHtml = `
                             <div class="text-start">
                                 <div class="mb-2">
@@ -291,6 +289,33 @@
                                 });
                             });
                         });
+                    }
+
+                    window.openSupportTicketModal = openSupportTicketModal;
+
+                    const helpCenterLink = document.getElementById('helpCenterLink');
+                    if (helpCenterLink) {
+                        helpCenterLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            openSupportTicketModal();
+                        });
+                    }
+
+                    document.addEventListener('click', function(e) {
+                        const helpDeskFloatingBtn = e.target.closest('#helpDeskFloatingBtn');
+                        if (!helpDeskFloatingBtn) {
+                            return;
+                        }
+
+                        e.preventDefault();
+                        openSupportTicketModal();
+                    });
+
+                    document.addEventListener('keydown', function(event) {
+                        if (event.key === 'F1') {
+                            event.preventDefault();
+                            openSupportTicketModal();
+                        }
                     });
 
                     <?php if ((isset($_SESSION['role']) && $_SESSION['role'] === 'admin') || !empty($_SESSION['can_manage_users'])): ?>
@@ -360,3 +385,8 @@
         </ul>
     </div>
 </div>
+
+<button type="button" class="helpdesk-fab" id="helpDeskFloatingBtn" title="Do you need help?">
+    <i class="fas fa-headset"></i>
+    <span>DO YOU NEED HELP!</span>
+</button>

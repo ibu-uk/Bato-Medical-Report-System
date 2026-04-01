@@ -47,6 +47,18 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
     header('Location: nurse_treatments.php');
     exit;
 }
+
+$totalTreatments = 0;
+$totalTreatmentsResult = executeQuery("SELECT COUNT(*) AS total FROM nurse_treatments");
+if ($totalTreatmentsResult && $row = $totalTreatmentsResult->fetch_assoc()) {
+    $totalTreatments = (int)$row['total'];
+}
+
+$treatmentsToday = 0;
+$treatmentsTodayResult = executeQuery("SELECT COUNT(*) AS total FROM nurse_treatments WHERE treatment_date = CURDATE()");
+if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
+    $treatmentsToday = (int)$row['total'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -147,6 +159,38 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
             font-size: 0.8rem;
             letter-spacing: 0.5px;
         }
+        .summary-card {
+            border: 1px solid #cfe0ef;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #f7fbff 0%, #eef5fc 100%);
+            box-shadow: 0 8px 18px rgba(18, 61, 101, 0.12);
+            padding: 0.9rem 1rem;
+            height: 100%;
+        }
+        .summary-label {
+            color: #5b6f84;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.2rem;
+        }
+        .summary-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #143f64;
+            line-height: 1.1;
+        }
+        .summary-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 2px solid #9db9d5;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            color: #1c5785;
+        }
     </style>
 </head>
 <body>
@@ -157,6 +201,27 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="d-inline-block">Nurse Treatments</h2>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="summary-card d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="summary-label">Total Nurse Treatments</div>
+                        <div class="summary-value"><?php echo $totalTreatments; ?></div>
+                    </div>
+                    <span class="summary-icon"><i class="fas fa-user-nurse"></i></span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="summary-card d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="summary-label">Treatments Today</div>
+                        <div class="summary-value"><?php echo $treatmentsToday; ?></div>
+                    </div>
+                    <span class="summary-icon"><i class="fas fa-calendar-day"></i></span>
+                </div>
             </div>
         </div>
 
@@ -392,6 +457,7 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <?php include_once 'includes/support_ticket_widget.php'; ?>
     <script>
         $(document).ready(function() {
             // Initialize DataTable without the default search box and pagination controls
