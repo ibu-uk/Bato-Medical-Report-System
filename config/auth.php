@@ -82,6 +82,7 @@ function canGenerateLinks() {
 function canManagePatients() {
     return isLoggedIn() && (
         (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'receptionist') ||
         !empty($_SESSION['can_manage_patients'])
     );
 }
