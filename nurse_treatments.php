@@ -230,7 +230,7 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">All Treatment Records</h5>
-                        <?php if (canEditTreatments()): ?>
+                        <?php if (canEditTreatments() || hasRole(['nurse'])): ?>
                         <a href="add_nurse_treatment.php" class="btn btn-primary">
                             <i class="fas fa-plus"></i> New Treatment Record
                         </a>

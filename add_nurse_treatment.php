@@ -8,7 +8,7 @@ require_once 'config/auth.php';
 
 // Require login and edit-treatments permission
 requireLogin();
-if (!canEditTreatments()) {
+if (!(canEditTreatments() || hasRole(['nurse']))) {
     header('Location: nurse_treatments.php');
     exit;
 }
