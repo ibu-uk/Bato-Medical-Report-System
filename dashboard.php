@@ -81,7 +81,7 @@ $recentPatients = [];
 $recentPatientsQuery = "SELECT p.id, p.name, p.file_number, p.mobile, p.created_at
                         FROM patients p
                         ORDER BY p.created_at DESC
-                        LIMIT 8";
+                        LIMIT 6";
 $result = $conn->query($recentPatientsQuery);
 if ($result) {
     while ($row = $result->fetch_assoc()) {

@@ -89,6 +89,9 @@
                     <label class="form-label">Attachment (Optional: screenshot/image/video, max 20MB)</label>
                     <input type="file" id="supportAttachment" class="form-control" accept="image/*,video/*">
                 </div>
+                <div class="mt-3 pt-2 border-top rounded px-2 py-2" style="background:#eef3f8;border:1px solid #c9d7e6;">
+                    <small class="fw-semibold" style="color:#1b3954;">For assistance, contact IT Support - Mohamed Ibrahim | Mobile/WhatsApp: 96566680241 | Email: it@batoclinic.com</small>
+                </div>
             </div>
         `;
 
