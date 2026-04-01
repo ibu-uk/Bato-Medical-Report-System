@@ -78,10 +78,7 @@ if ($result && $row = $result->fetch_assoc()) {
 }
 
 $recentPatients = [];
-$recentPatientsQuery = "SELECT p.id, p.name, p.file_number, p.mobile, p.created_at,
-                               (SELECT COUNT(*) FROM reports r WHERE r.patient_id = p.id) AS report_count,
-                               (SELECT COUNT(*) FROM prescriptions pr WHERE pr.patient_id = p.id) AS prescription_count,
-                               (SELECT COUNT(*) FROM nurse_treatments nt WHERE nt.patient_id = p.id) AS treatment_count
+$recentPatientsQuery = "SELECT p.id, p.name, p.file_number, p.mobile, p.created_at
                         FROM patients p
                         ORDER BY p.created_at DESC
                         LIMIT 8";
@@ -92,17 +89,44 @@ if ($result) {
     }
 }
 
-$topPatientsByReports = [];
-$topPatientsQuery = "SELECT p.id, p.name, p.file_number, COUNT(r.id) AS report_total, MAX(r.created_at) AS latest_report_at
-                     FROM reports r
-                     JOIN patients p ON p.id = r.patient_id
-                     GROUP BY p.id, p.name, p.file_number
-                     ORDER BY report_total DESC, latest_report_at DESC
-                     LIMIT 8";
-$result = $conn->query($topPatientsQuery);
+$recentReports = [];
+$recentReportsQuery = "SELECT r.id, r.report_date, r.created_at, p.name AS patient_name, p.file_number, d.name AS doctor_name
+                       FROM reports r
+                       JOIN patients p ON p.id = r.patient_id
+                       JOIN doctors d ON d.id = r.doctor_id
+                       ORDER BY r.created_at DESC
+                       LIMIT 6";
+$result = $conn->query($recentReportsQuery);
 if ($result) {
     while ($row = $result->fetch_assoc()) {
-        $topPatientsByReports[] = $row;
+        $recentReports[] = $row;
+    }
+}
+
+$recentPrescriptions = [];
+$recentPrescriptionsQuery = "SELECT pr.id, pr.prescription_date, p.name AS patient_name, p.file_number, d.name AS doctor_name
+                             FROM prescriptions pr
+                             JOIN patients p ON p.id = pr.patient_id
+                             JOIN doctors d ON d.id = pr.doctor_id
+                             ORDER BY pr.prescription_date DESC, pr.id DESC
+                             LIMIT 6";
+$result = $conn->query($recentPrescriptionsQuery);
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $recentPrescriptions[] = $row;
+    }
+}
+
+$recentNurseTreatments = [];
+$recentNurseTreatmentsQuery = "SELECT nt.id, nt.treatment_date, nt.nurse_name, p.name AS patient_name, p.file_number
+                               FROM nurse_treatments nt
+                               JOIN patients p ON p.id = nt.patient_id
+                               ORDER BY nt.treatment_date DESC, nt.id DESC
+                               LIMIT 6";
+$result = $conn->query($recentNurseTreatmentsQuery);
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $recentNurseTreatments[] = $row;
     }
 }
 ?>
@@ -128,14 +152,6 @@ if ($result) {
         .main-content {
             background: radial-gradient(circle at top right, #e6f1f8 0%, var(--dashboard-bg) 38%, #f8fbfd 100%);
             min-height: calc(100vh - 56px);
-        }
-        .dashboard-banner {
-            background: linear-gradient(120deg, #e4f0f8 0%, #eef7f2 100%);
-            border: 1px solid #cfe1ef;
-            border-radius: 16px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1rem;
-            color: #17384f;
         }
         .kpi-tile {
             border-radius: 14px;
@@ -246,13 +262,7 @@ if ($result) {
             <div class="d-flex align-items-center mb-3">
                 <div>
                     <h4 class="mb-1">Dashboard</h4>
-                    <p class="text-muted mb-0">Clinic snapshot with newest patients and report-heavy cases.</p>
-                </div>
-            </div>
-
-            <div class="dashboard-banner">
-                <div>
-                    <strong>Monthly intake:</strong> <?php echo $metrics['new_patients_month']; ?> new patients this month.
+                    <p class="text-muted mb-0">Clinic snapshot with newest patients, prescriptions, and nurse treatments.</p>
                 </div>
             </div>
 
@@ -349,7 +359,7 @@ if ($result) {
             </div>
 
             <div class="row g-3">
-                <div class="col-lg-8">
+                <div class="col-lg-6">
                     <div class="card clinic-panel">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="mb-0"><i class="fas fa-user-clock me-2"></i>Recently Added Patients</h6>
@@ -363,9 +373,6 @@ if ($result) {
                                             <th>Patient</th>
                                             <th>File #</th>
                                             <th>Mobile</th>
-                                            <th>Reports</th>
-                                            <th>Rx</th>
-                                            <th>Treatments</th>
                                             <th>Added</th>
                                         </tr>
                                     </thead>
@@ -376,14 +383,11 @@ if ($result) {
                                                 <td class="fw-semibold"><?php echo htmlspecialchars($patient['name']); ?></td>
                                                 <td><?php echo htmlspecialchars($patient['file_number']); ?></td>
                                                 <td><?php echo htmlspecialchars($patient['mobile']); ?></td>
-                                                <td><span class="badge bg-primary"><?php echo (int)$patient['report_count']; ?></span></td>
-                                                <td><span class="badge bg-info text-dark"><?php echo (int)$patient['prescription_count']; ?></span></td>
-                                                <td><span class="badge bg-warning text-dark"><?php echo (int)$patient['treatment_count']; ?></span></td>
                                                 <td><?php echo date('Y-m-d', strtotime($patient['created_at'])); ?></td>
                                             </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr><td colspan="7" class="text-center text-muted py-4">No recent patients found.</td></tr>
+                                            <tr><td colspan="4" class="text-center text-muted py-4">No recent patients found.</td></tr>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -392,27 +396,113 @@ if ($result) {
                     </div>
                 </div>
 
-                <div class="col-lg-4">
+                <div class="col-lg-6">
                     <div class="card clinic-panel">
-                        <div class="card-header">
-                            <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i>Top Patients by Reports</h6>
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-file-medical me-2"></i>Recently Added Reports</h6>
+                            <a href="reports.php" class="btn btn-sm btn-outline-primary">View All</a>
                         </div>
-                        <div class="card-body">
-                            <?php if (!empty($topPatientsByReports)): ?>
-                                <ul class="list-group list-group-flush">
-                                    <?php foreach ($topPatientsByReports as $item): ?>
-                                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start">
-                                        <div>
-                                            <div class="fw-semibold"><?php echo htmlspecialchars($item['name']); ?></div>
-                                            <small class="text-muted">File #: <?php echo htmlspecialchars($item['file_number']); ?></small>
-                                        </div>
-                                        <span class="badge bg-success rounded-pill"><?php echo (int)$item['report_total']; ?></span>
-                                    </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php else: ?>
-                                <p class="text-muted mb-0">No report data available yet.</p>
-                            <?php endif; ?>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Patient</th>
+                                            <th>File #</th>
+                                            <th>Doctor</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($recentReports)): ?>
+                                            <?php foreach ($recentReports as $item): ?>
+                                            <tr>
+                                                <td class="fw-semibold"><?php echo htmlspecialchars($item['patient_name']); ?></td>
+                                                <td><?php echo htmlspecialchars($item['file_number']); ?></td>
+                                                <td><?php echo htmlspecialchars($item['doctor_name']); ?></td>
+                                                <td><?php echo date('Y-m-d', strtotime($item['report_date'])); ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr><td colspan="4" class="text-center text-muted py-4">No reports available yet.</td></tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card clinic-panel">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-prescription me-2"></i>Recently Added Prescriptions</h6>
+                            <a href="prescriptions.php" class="btn btn-sm btn-outline-primary">View All</a>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Patient</th>
+                                            <th>File #</th>
+                                            <th>Doctor</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($recentPrescriptions)): ?>
+                                            <?php foreach ($recentPrescriptions as $item): ?>
+                                            <tr>
+                                                <td class="fw-semibold"><?php echo htmlspecialchars($item['patient_name']); ?></td>
+                                                <td><?php echo htmlspecialchars($item['file_number']); ?></td>
+                                                <td><?php echo htmlspecialchars($item['doctor_name']); ?></td>
+                                                <td><?php echo date('Y-m-d', strtotime($item['prescription_date'])); ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr><td colspan="4" class="text-center text-muted py-4">No prescriptions available yet.</td></tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card clinic-panel">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-user-nurse me-2"></i>Recently Added Nurse Treatments</h6>
+                            <a href="nurse_treatments.php" class="btn btn-sm btn-outline-primary">View All</a>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Patient</th>
+                                            <th>File #</th>
+                                            <th>Nurse</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($recentNurseTreatments)): ?>
+                                            <?php foreach ($recentNurseTreatments as $item): ?>
+                                            <tr>
+                                                <td class="fw-semibold"><?php echo htmlspecialchars($item['patient_name']); ?></td>
+                                                <td><?php echo htmlspecialchars($item['file_number']); ?></td>
+                                                <td><?php echo htmlspecialchars($item['nurse_name']); ?></td>
+                                                <td><?php echo date('Y-m-d', strtotime($item['treatment_date'])); ?></td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr><td colspan="4" class="text-center text-muted py-4">No nurse treatments available yet.</td></tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>

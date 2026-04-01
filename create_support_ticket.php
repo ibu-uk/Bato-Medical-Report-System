@@ -80,9 +80,15 @@ if (isset($_FILES['attachment']) && is_array($_FILES['attachment']) && ($_FILES[
     }
 
     $uploadDir = __DIR__ . '/uploads/support';
-    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true)) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Failed to prepare upload folder.']);
+        exit;
+    }
+
+    if (!is_writable($uploadDir)) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Upload folder is not writable on the server.']);
         exit;
     }
 
