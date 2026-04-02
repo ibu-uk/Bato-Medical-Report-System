@@ -13,6 +13,12 @@ if (!(canEditTreatments() || hasRole(['nurse']))) {
     exit;
 }
 
+$isNurseRole = hasRole(['nurse']);
+$loggedInNurseName = trim((string)($_SESSION['full_name'] ?? $_SESSION['username'] ?? ''));
+if ($loggedInNurseName === '') {
+    $loggedInNurseName = $isNurseRole ? 'Nurse' : 'Staff';
+}
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // For debugging - uncomment to see form data
@@ -24,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate form data
     $patient_id = sanitize($_POST['patient_id']);
     $treatment_date = sanitize($_POST['treatment_date']);
-    $nurse_name = sanitize($_POST['nurse_name']);
+    $nurse_name = sanitize($loggedInNurseName);
     $report = sanitize($_POST['report']);
     $treatment = sanitize($_POST['treatment']);
     $payment_status = sanitize($_POST['payment_status']);
@@ -194,7 +200,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </div>
                                 <div class="mb-3">
                                     <label for="nurse_name" class="form-label">Nurse Name</label>
-                                    <input type="text" class="form-control" id="nurse_name" name="nurse_name" required>
+                                    <input type="text" class="form-control" id="nurse_name" name="nurse_name" value="<?php echo htmlspecialchars($loggedInNurseName); ?>" readonly required>
+                                    <small class="text-muted">Auto-filled from your logged-in account.</small>
                                 </div>
                                 <div class="mb-3">
                                     <label for="payment_status" class="form-label">Payment Status</label>
