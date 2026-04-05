@@ -111,9 +111,10 @@
             </li>
 
             <li class="nav-item">
-                <a href="staff_chat.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'staff_chat.php' ? 'active' : ''; ?>">
+                <a href="staff_chat.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'staff_chat.php' ? 'active' : ''; ?>" id="staffChatNavLink">
                     <i class="fas fa-comments"></i>
                     <span>Staff Chat</span>
+                    <span class="badge bg-danger" id="staffChatBadge" style="display:none;">0</span>
                 </a>
             </li>
 
@@ -312,6 +313,115 @@
                             openSupportTicketModal();
                         }
                     });
+
+                    (function startStaffChatPolling() {
+                        const chatBadgeEl = document.getElementById('staffChatBadge');
+                        const staffChatNavLinkEl = document.getElementById('staffChatNavLink');
+                        const currentUserId = <?php echo (int)($_SESSION['user_id'] ?? 0); ?>;
+                        const latestSeenIdStorageKey = `staff_chat_latest_seen_id_${currentUserId}`;
+                        const unreadCountStorageKey = `staff_chat_unread_count_${currentUserId}`;
+                        const isOnStaffChatPage = <?php echo basename($_SERVER['PHP_SELF']) === 'staff_chat.php' ? 'true' : 'false'; ?>;
+                        let hasInitialized = Number(localStorage.getItem(latestSeenIdStorageKey) || 0) > 0;
+
+                        function renderChatBadge() {
+                            if (!chatBadgeEl) {
+                                return;
+                            }
+
+                            const unreadCount = Number(localStorage.getItem(unreadCountStorageKey) || 0);
+                            if (unreadCount > 0) {
+                                chatBadgeEl.style.display = 'inline-block';
+                                chatBadgeEl.textContent = String(unreadCount);
+                            } else {
+                                chatBadgeEl.style.display = 'none';
+                            }
+                        }
+
+                        function markAsRead() {
+                            localStorage.setItem(unreadCountStorageKey, '0');
+                            renderChatBadge();
+                        }
+
+                        staffChatNavLinkEl?.addEventListener('click', function() {
+                            markAsRead();
+                        });
+
+                        if (isOnStaffChatPage) {
+                            markAsRead();
+                        } else {
+                            renderChatBadge();
+                        }
+
+                        function poll() {
+                            const sinceId = Number(localStorage.getItem(latestSeenIdStorageKey) || 0);
+
+                            fetch('staff_chat_fetch.php?since_id=' + encodeURIComponent(String(sinceId)), {
+                                headers: { 'Accept': 'application/json' }
+                            })
+                                .then((response) => response.json())
+                                .then((data) => {
+                                    if (!data.success || !Array.isArray(data.messages)) {
+                                        return;
+                                    }
+
+                                    let latestId = sinceId;
+                                    let incomingFromOthers = 0;
+
+                                    data.messages.forEach((message) => {
+                                        const messageId = Number(message.id || 0);
+                                        if (messageId > latestId) {
+                                            latestId = messageId;
+                                        }
+                                        if (Number(message.is_own || 0) !== 1) {
+                                            incomingFromOthers += 1;
+                                        }
+                                    });
+
+                                    if (!hasInitialized && sinceId === 0) {
+                                        if (latestId > 0) {
+                                            localStorage.setItem(latestSeenIdStorageKey, String(latestId));
+                                        }
+                                        hasInitialized = true;
+                                        return;
+                                    }
+
+                                    hasInitialized = true;
+
+                                    if (latestId > sinceId) {
+                                        localStorage.setItem(latestSeenIdStorageKey, String(latestId));
+                                    }
+
+                                    if (isOnStaffChatPage) {
+                                        markAsRead();
+                                        return;
+                                    }
+
+                                    if (incomingFromOthers > 0) {
+                                        const currentUnread = Number(localStorage.getItem(unreadCountStorageKey) || 0);
+                                        localStorage.setItem(unreadCountStorageKey, String(currentUnread + incomingFromOthers));
+                                        renderChatBadge();
+
+                                        Swal.fire({
+                                            toast: true,
+                                            position: 'top-end',
+                                            icon: 'info',
+                                            title: incomingFromOthers === 1
+                                                ? 'New staff chat message'
+                                                : `${incomingFromOthers} new staff chat messages`,
+                                            showConfirmButton: false,
+                                            timer: 2500,
+                                            timerProgressBar: true
+                                        });
+                                    }
+                                })
+                                .catch(() => {
+                                    // Ignore transient polling failures.
+                                });
+                        }
+
+                        poll();
+                        setInterval(poll, 5000);
+                    })();
 
                     <?php if ((isset($_SESSION['role']) && $_SESSION['role'] === 'admin') || !empty($_SESSION['can_manage_users'])): ?>
                     (function startSupportTicketPolling() {

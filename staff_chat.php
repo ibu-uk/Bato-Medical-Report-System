@@ -355,8 +355,21 @@ $conn->close();
     const recipientUserIdEl = document.getElementById('recipientUserId');
     const recipientUserIdsEl = document.getElementById('recipientUserIds');
     const adminThreadFilterEl = document.getElementById('adminThreadFilter');
+    const chatLatestSeenKey = `staff_chat_latest_seen_id_${currentUserId}`;
+    const chatUnreadCountKey = `staff_chat_unread_count_${currentUserId}`;
     let lastMessageId = 0;
     let isSending = false;
+
+    function persistSeenState() {
+        localStorage.setItem(chatLatestSeenKey, String(lastMessageId));
+        localStorage.setItem(chatUnreadCountKey, '0');
+
+        const sidebarBadge = document.getElementById('staffChatBadge');
+        if (sidebarBadge) {
+            sidebarBadge.style.display = 'none';
+            sidebarBadge.textContent = '0';
+        }
+    }
 
     function escapeHtml(value) {
         return String(value)
@@ -377,6 +390,7 @@ $conn->close();
     function appendMessage(msg, shouldAutoScroll = true) {
         if (!msg || !msg.id) return;
         lastMessageId = Math.max(lastMessageId, Number(msg.id));
+        persistSeenState();
 
         const row = document.createElement('div');
         row.className = 'message-row';
@@ -449,6 +463,7 @@ $conn->close();
     function loadInitialMessages() {
         initialMessages.forEach((msg) => appendMessage(msg, false));
         chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        persistSeenState();
     }
 
     function setStatus(text, isError = false) {
@@ -622,6 +637,7 @@ $conn->close();
 
             chatMessagesEl.innerHTML = '';
             lastMessageId = 0;
+            persistSeenState();
             alert('Chat cleared successfully.');
         } catch (error) {
             alert(error.message || 'Could not clear chat.');
