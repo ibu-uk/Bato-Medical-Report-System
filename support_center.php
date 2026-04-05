@@ -391,9 +391,14 @@ if ($stmt) {
     });
 
     document.getElementById('openSupportModalBtn')?.addEventListener('click', function() {
+        if (typeof window.openSupportTicketModal === 'function') {
+            window.openSupportTicketModal();
+            return;
+        }
+
         const helpLink = document.getElementById('helpCenterLink');
-        if (helpLink) {
-            helpLink.click();
+        if (helpLink && helpLink.getAttribute('href')) {
+            window.location.href = helpLink.getAttribute('href');
         }
     });
     </script>

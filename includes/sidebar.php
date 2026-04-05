@@ -111,9 +111,9 @@
             </li>
 
             <li class="nav-item">
-                <a href="javascript:void(0)" class="nav-link" id="helpCenterLink">
-                    <i class="fas fa-life-ring"></i>
-                    <span>New Support Ticket</span>
+                <a href="staff_chat.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'staff_chat.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-comments"></i>
+                    <span>Staff Chat</span>
                 </a>
             </li>
 
@@ -296,14 +296,6 @@
 
                     window.openSupportTicketModal = openSupportTicketModal;
 
-                    const helpCenterLink = document.getElementById('helpCenterLink');
-                    if (helpCenterLink) {
-                        helpCenterLink.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            openSupportTicketModal();
-                        });
-                    }
-
                     document.addEventListener('click', function(e) {
                         const helpDeskFloatingBtn = e.target.closest('#helpDeskFloatingBtn');
                         if (!helpDeskFloatingBtn) {
@@ -311,7 +303,7 @@
                         }
 
                         e.preventDefault();
-                        openSupportTicketModal();
+                        window.location.href = 'staff_chat.php';
                     });
 
                     document.addEventListener('keydown', function(event) {

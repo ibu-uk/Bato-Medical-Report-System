@@ -184,7 +184,7 @@
     if (helpDeskFloatingBtn) {
         helpDeskFloatingBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            window.openSupportTicketModal();
+            window.location.href = 'staff_chat.php';
         });
     }
 })();
