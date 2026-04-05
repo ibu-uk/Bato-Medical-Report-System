@@ -45,6 +45,7 @@ if (!ensureStaffChatTables($conn)) {
 
 $userId = (int)($_SESSION['user_id'] ?? 0);
 $senderName = staffChatResolveSenderName($conn, $userId);
+$isAdmin = hasRole(['admin']);
 
 $attachmentPath = null;
 $attachmentName = null;
@@ -126,9 +127,64 @@ if ($hasAttachment) {
     $attachmentType = $detectedMime;
 }
 
-$messageId = staffChatInsertMessage($conn, $userId, $senderName, $message, 0, $attachmentPath, $attachmentName, $attachmentType);
+$recipientMode = $isAdmin ? trim((string)($_POST['recipient_mode'] ?? 'all')) : 'single';
+$targetThreadIds = [];
+$isBroadcast = 0;
 
-if ($messageId <= 0) {
+if ($isAdmin) {
+    if ($recipientMode === 'single') {
+        $singleRecipientId = (int)($_POST['recipient_user_id'] ?? 0);
+        $targetThreadIds = staffChatFilterAllowedRecipientIds($conn, [$singleRecipientId], $userId);
+    } elseif ($recipientMode === 'multiple') {
+        $rawRecipientIds = $_POST['recipient_user_ids'] ?? [];
+        if (!is_array($rawRecipientIds)) {
+            $rawRecipientIds = [$rawRecipientIds];
+        }
+        $targetThreadIds = staffChatFilterAllowedRecipientIds($conn, $rawRecipientIds, $userId);
+    } elseif ($recipientMode === 'all') {
+        $allRecipients = staffChatGetNonAdminRecipients($conn, $userId);
+        foreach ($allRecipients as $recipient) {
+            $targetThreadIds[] = (int)$recipient['id'];
+        }
+        $isBroadcast = 1;
+    } else {
+        $conn->close();
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'Invalid recipient mode']);
+        exit;
+    }
+
+    if ($recipientMode !== 'all' && empty($targetThreadIds)) {
+        $conn->close();
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'Please select at least one staff recipient']);
+        exit;
+    }
+}
+
+$insertedMessageIds = [];
+if ($isAdmin) {
+    if ($recipientMode === 'all') {
+        $messageId = staffChatInsertMessage($conn, $userId, $senderName, $message, 0, $attachmentPath, $attachmentName, $attachmentType, 0, 1);
+        if ($messageId > 0) {
+            $insertedMessageIds[] = $messageId;
+        }
+    } else {
+        foreach ($targetThreadIds as $threadUserId) {
+            $messageId = staffChatInsertMessage($conn, $userId, $senderName, $message, 0, $attachmentPath, $attachmentName, $attachmentType, (int)$threadUserId, 0);
+            if ($messageId > 0) {
+                $insertedMessageIds[] = $messageId;
+            }
+        }
+    }
+} else {
+    $messageId = staffChatInsertMessage($conn, $userId, $senderName, $message, 0, $attachmentPath, $attachmentName, $attachmentType, $userId, 0);
+    if ($messageId > 0) {
+        $insertedMessageIds[] = $messageId;
+    }
+}
+
+if (empty($insertedMessageIds)) {
     $conn->close();
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Could not send message']);
@@ -138,13 +194,17 @@ if ($messageId <= 0) {
 $botReply = $message !== '' ? staffChatGenerateBotReply($conn, $message) : '';
 $botMessageId = 0;
 if ($botReply !== '') {
-    $botMessageId = staffChatInsertMessage($conn, 0, 'Clinic Assistant Bot', $botReply, 1);
+    $botThreadUserId = $userId > 0 ? $userId : 0;
+    $botMessageId = staffChatInsertMessage($conn, 0, 'Clinic Assistant Bot', $botReply, 1, null, null, null, $botThreadUserId, 0);
 }
+
+$latestMessageId = !empty($insertedMessageIds) ? max($insertedMessageIds) : 0;
 
 $conn->close();
 
 echo json_encode([
     'success' => true,
-    'message_id' => $messageId,
+    'message_id' => $latestMessageId,
+    'message_ids' => $insertedMessageIds,
     'bot_message_id' => $botMessageId
 ]);

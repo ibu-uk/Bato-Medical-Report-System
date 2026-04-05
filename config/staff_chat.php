@@ -8,17 +8,21 @@ require_once __DIR__ . '/database.php';
 function ensureStaffChatTables($conn) {
     $createSql = "CREATE TABLE IF NOT EXISTS staff_chat_messages (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NULL,
+        user_id INT NOT NULL DEFAULT 0,
         sender_name VARCHAR(255) NOT NULL,
         message_text TEXT NOT NULL,
         is_bot TINYINT(1) NOT NULL DEFAULT 0,
         attachment_path VARCHAR(255) NULL,
         attachment_name VARCHAR(255) NULL,
         attachment_type VARCHAR(100) NULL,
+        thread_user_id INT NOT NULL DEFAULT 0,
+        is_broadcast TINYINT(1) NOT NULL DEFAULT 0,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_staff_chat_created_at (created_at),
         INDEX idx_staff_chat_user_id (user_id),
-        INDEX idx_staff_chat_is_bot (is_bot)
+        INDEX idx_staff_chat_thread_user_id (thread_user_id),
+        INDEX idx_staff_chat_is_bot (is_bot),
+        INDEX idx_staff_chat_is_broadcast (is_broadcast)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
     if ($conn->query($createSql) !== true) {
@@ -46,6 +50,12 @@ function ensureStaffChatTables($conn) {
     if (!in_array('attachment_type', $columns, true)) {
         $alterParts[] = "ADD COLUMN attachment_type VARCHAR(100) NULL AFTER attachment_name";
     }
+    if (!in_array('thread_user_id', $columns, true)) {
+        $alterParts[] = "ADD COLUMN thread_user_id INT NOT NULL DEFAULT 0 AFTER attachment_type";
+    }
+    if (!in_array('is_broadcast', $columns, true)) {
+        $alterParts[] = "ADD COLUMN is_broadcast TINYINT(1) NOT NULL DEFAULT 0 AFTER thread_user_id";
+    }
 
     if (!empty($alterParts)) {
         $alterSql = "ALTER TABLE staff_chat_messages " . implode(', ', $alterParts);
@@ -53,6 +63,29 @@ function ensureStaffChatTables($conn) {
             return false;
         }
     }
+
+    $indexResult = $conn->query("SHOW INDEX FROM staff_chat_messages");
+    $indexes = [];
+    if ($indexResult) {
+        while ($row = $indexResult->fetch_assoc()) {
+            $indexes[] = $row['Key_name'];
+        }
+    }
+
+    if (!in_array('idx_staff_chat_thread_user_id', $indexes, true)) {
+        if ($conn->query("CREATE INDEX idx_staff_chat_thread_user_id ON staff_chat_messages (thread_user_id)") !== true) {
+            return false;
+        }
+    }
+
+    if (!in_array('idx_staff_chat_is_broadcast', $indexes, true)) {
+        if ($conn->query("CREATE INDEX idx_staff_chat_is_broadcast ON staff_chat_messages (is_broadcast)") !== true) {
+            return false;
+        }
+    }
+
+    // Backfill legacy rows so each staff member keeps their own prior chat history in the new inbox model.
+    $conn->query("UPDATE staff_chat_messages SET thread_user_id = user_id WHERE thread_user_id = 0 AND user_id > 0 AND is_broadcast = 0");
 
     return true;
 }
@@ -81,22 +114,89 @@ function staffChatResolveSenderName($conn, $userId) {
     return $name;
 }
 
-function staffChatInsertMessage($conn, $userId, $senderName, $messageText, $isBot = 0, $attachmentPath = null, $attachmentName = null, $attachmentType = null) {
-    $query = "INSERT INTO staff_chat_messages (user_id, sender_name, message_text, is_bot, attachment_path, attachment_name, attachment_type)
-              VALUES (?, ?, ?, ?, ?, ?, ?)";
+function staffChatInsertMessage($conn, $userId, $senderName, $messageText, $isBot = 0, $attachmentPath = null, $attachmentName = null, $attachmentType = null, $threadUserId = 0, $isBroadcast = 0) {
+    $query = "INSERT INTO staff_chat_messages (user_id, sender_name, message_text, is_bot, attachment_path, attachment_name, attachment_type, thread_user_id, is_broadcast)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($query);
     if (!$stmt) {
         return 0;
     }
 
-    $nullableUserId = $userId > 0 ? $userId : null;
-    $stmt->bind_param('ississs', $nullableUserId, $senderName, $messageText, $isBot, $attachmentPath, $attachmentName, $attachmentType);
+    $normalizedUserId = $userId > 0 ? (int)$userId : 0;
+    $normalizedThreadUserId = $threadUserId > 0 ? (int)$threadUserId : 0;
+    $normalizedBroadcast = $isBroadcast ? 1 : 0;
+
+    $stmt->bind_param('ississsii', $normalizedUserId, $senderName, $messageText, $isBot, $attachmentPath, $attachmentName, $attachmentType, $normalizedThreadUserId, $normalizedBroadcast);
 
     $ok = $stmt->execute();
     $insertId = $ok ? (int)$conn->insert_id : 0;
     $stmt->close();
 
     return $insertId;
+}
+
+function staffChatGetNonAdminRecipients($conn, $excludeUserId = 0) {
+    $recipients = [];
+    $query = "SELECT id, full_name, role FROM users WHERE role <> 'admin' ORDER BY full_name ASC";
+    $result = $conn->query($query);
+    if (!$result) {
+        return $recipients;
+    }
+
+    while ($row = $result->fetch_assoc()) {
+        $id = (int)($row['id'] ?? 0);
+        if ($id <= 0 || ($excludeUserId > 0 && $id === (int)$excludeUserId)) {
+            continue;
+        }
+
+        $recipients[] = [
+            'id' => $id,
+            'full_name' => trim((string)($row['full_name'] ?? '')),
+            'role' => trim((string)($row['role'] ?? ''))
+        ];
+    }
+
+    return $recipients;
+}
+
+function staffChatFilterAllowedRecipientIds($conn, $candidateIds, $excludeUserId = 0) {
+    if (!is_array($candidateIds) || empty($candidateIds)) {
+        return [];
+    }
+
+    $normalized = [];
+    foreach ($candidateIds as $id) {
+        $intId = (int)$id;
+        if ($intId > 0 && ($excludeUserId <= 0 || $intId !== (int)$excludeUserId)) {
+            $normalized[$intId] = $intId;
+        }
+    }
+
+    if (empty($normalized)) {
+        return [];
+    }
+
+    $ids = array_values($normalized);
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $query = "SELECT id FROM users WHERE role <> 'admin' AND id IN ($placeholders)";
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        return [];
+    }
+
+    $types = str_repeat('i', count($ids));
+    $stmt->bind_param($types, ...$ids);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $valid = [];
+    while ($result && $row = $result->fetch_assoc()) {
+        $valid[] = (int)$row['id'];
+    }
+
+    $stmt->close();
+    sort($valid);
+    return $valid;
 }
 
 function staffChatGenerateBotReply($conn, $rawMessage) {
