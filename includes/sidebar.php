@@ -365,16 +365,14 @@
                                     }
 
                                     let latestId = sinceId;
-                                    let incomingFromOthers = 0;
+                                    let incomingVisibleMessages = 0;
 
                                     data.messages.forEach((message) => {
                                         const messageId = Number(message.id || 0);
                                         if (messageId > latestId) {
                                             latestId = messageId;
                                         }
-                                        if (Number(message.is_own || 0) !== 1) {
-                                            incomingFromOthers += 1;
-                                        }
+                                        incomingVisibleMessages += 1;
                                     });
 
                                     if (!hasInitialized && sinceId === 0) {
@@ -396,18 +394,18 @@
                                         return;
                                     }
 
-                                    if (incomingFromOthers > 0) {
+                                    if (incomingVisibleMessages > 0) {
                                         const currentUnread = Number(localStorage.getItem(unreadCountStorageKey) || 0);
-                                        localStorage.setItem(unreadCountStorageKey, String(currentUnread + incomingFromOthers));
+                                        localStorage.setItem(unreadCountStorageKey, String(currentUnread + incomingVisibleMessages));
                                         renderChatBadge();
 
                                         Swal.fire({
                                             toast: true,
                                             position: 'top-end',
                                             icon: 'info',
-                                            title: incomingFromOthers === 1
+                                            title: incomingVisibleMessages === 1
                                                 ? 'New staff chat message'
-                                                : `${incomingFromOthers} new staff chat messages`,
+                                                : `${incomingVisibleMessages} new staff chat messages`,
                                             showConfirmButton: false,
                                             timer: 2500,
                                             timerProgressBar: true
