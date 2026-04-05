@@ -227,7 +227,6 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                             <table id="reportsTable" class="table">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
                                         <th>Patient Name</th>
                                         <th>Civil ID</th>
                                         <th>Report Date</th>
@@ -235,7 +234,6 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                                         <th>Appointment Time</th>
                                         <th>Doctor</th>
                                         <th>Created By</th>
-                                        <th>Created At</th>
                                         <?php if (canGenerateLinks()): ?>
                                         <th>Link Status</th>
                                         <?php endif; ?>
@@ -247,7 +245,6 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                                     if ($reports && $reports->num_rows > 0) {
                                         while ($row = $reports->fetch_assoc()) {
                                             echo "<tr>";
-                                            echo "<td>{$row['id']}</td>";
                                             echo "<td>{$row['patient_name']}</td>";
                                             echo "<td>{$row['civil_id']}</td>";
                                             echo "<td>" . date('Y-m-d', strtotime($row['report_date'])) . "</td>";
@@ -255,7 +252,6 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                                             echo "<td>" . (!empty($row['appointment_time']) ? date('H:i', strtotime($row['appointment_time'])) : '-') . "</td>";
                                             echo "<td>{$row['doctor_name']}</td>";
                                             echo "<td>{$row['generated_by']}</td>";
-                                            echo "<td>" . date('Y-m-d H:i', strtotime($row['created_at'])) . "</td>";
 
                                             // Link status column: show whether patient already has an active link (only users allowed to generate links)
                                             if (canGenerateLinks()) {
@@ -584,7 +580,7 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize DataTable
         const dataTable = $('#reportsTable').DataTable({
-            order: [[3, 'desc']], // Sort by report date (column index 3) in descending order
+            order: [[2, 'desc']], // Sort by report date in descending order
             responsive: true,
             pageLength: 25,
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
@@ -593,9 +589,9 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                 searchPlaceholder: "Search reports..."
             },
             columnDefs: [
-                { type: 'date', targets: 3 }, // Ensure proper date sorting
-                { className: 'text-center', targets: [0, 7] } // Center align ID and Actions columns
+                { type: 'date', targets: 2 } // Ensure proper date sorting on Report Date column
             ],
+
             initComplete: function() {
                 $('.dataTables_filter input').addClass('form-control');
                 $('.dataTables_length select').addClass('form-select');
