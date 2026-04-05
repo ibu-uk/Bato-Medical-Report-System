@@ -143,9 +143,17 @@ requireLogin();
                                         </div>
                                     </div>
                                     <div class="row">
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label for="report_date" class="form-label">Report Date</label>
                                             <input type="date" class="form-control" id="report_date" name="report_date" value="<?php echo date('Y-m-d'); ?>" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="appointment_date" class="form-label">Appointment Date</label>
+                                            <input type="date" class="form-control" id="appointment_date" name="appointment_date" value="<?php echo date('Y-m-d'); ?>" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="appointment_time" class="form-label">Appointment Time</label>
+                                            <input type="time" class="form-control" id="appointment_time" name="appointment_time" value="<?php echo date('H:i'); ?>" required>
                                         </div>
                                     </div>
                                 </div>

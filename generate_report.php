@@ -23,8 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $patientId = sanitize($_POST['patient_id']);
     $doctorId = sanitize($_POST['doctor_id']);
     $reportDate = sanitize($_POST['report_date']);
+    $appointmentDate = sanitize($_POST['appointment_date'] ?? '');
+    $appointmentTime = sanitize($_POST['appointment_time'] ?? '');
     $generatedBy = sanitize($_POST['generated_by']);
-    $userId = isset($_POST['user_id']) ? sanitize($_POST['user_id']) : $_SESSION['user_id'];
+    $userId = isset($_POST['user_id']) ? (int)$_POST['user_id'] : (int)$_SESSION['user_id'];
     
     // Get test data
     $testTypeIds = isset($_POST['test_type_id']) ? $_POST['test_type_id'] : [];
@@ -35,9 +37,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get conclusion
     $conclusion = isset($_POST['conclusion']) ? sanitize($_POST['conclusion']) : null;
     
-    // Insert report into database (including conclusion)
-    $reportQuery = "INSERT INTO reports (patient_id, doctor_id, report_date, generated_by, user_id, conclusion, created_at) 
-                   VALUES (?, ?, ?, ?, ?, ?, NOW())";
+    // Ensure appointment columns exist for backward compatibility with older databases
+    $hasAppointmentDate = $conn->query("SHOW COLUMNS FROM reports LIKE 'appointment_date'");
+    if ($hasAppointmentDate && $hasAppointmentDate->num_rows === 0) {
+        $conn->query("ALTER TABLE reports ADD COLUMN appointment_date DATE NULL AFTER report_date");
+    }
+
+    $hasAppointmentTime = $conn->query("SHOW COLUMNS FROM reports LIKE 'appointment_time'");
+    if ($hasAppointmentTime && $hasAppointmentTime->num_rows === 0) {
+        $conn->query("ALTER TABLE reports ADD COLUMN appointment_time TIME NULL AFTER appointment_date");
+    }
+
+    // Insert report into database (including conclusion and appointment fields)
+    $reportQuery = "INSERT INTO reports (patient_id, doctor_id, report_date, appointment_date, appointment_time, generated_by, user_id, conclusion, created_at) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
     
     $stmt = $conn->prepare($reportQuery);
     if (!$stmt) {
@@ -46,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    $stmt->bind_param("iissss", $patientId, $doctorId, $reportDate, $generatedBy, $userId, $conclusion);
+    $stmt->bind_param("iissssis", $patientId, $doctorId, $reportDate, $appointmentDate, $appointmentTime, $generatedBy, $userId, $conclusion);
     
     if ($stmt->execute()) {
         $reportId = $conn->insert_id;

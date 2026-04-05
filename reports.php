@@ -14,15 +14,28 @@ require_once 'config/auth.php';
 // Require login to access this page
 requireLogin();
 
+// Ensure appointment columns exist for backward compatibility with older databases
+$schemaConn = getDbConnection();
+$hasAppointmentDate = $schemaConn->query("SHOW COLUMNS FROM reports LIKE 'appointment_date'");
+if ($hasAppointmentDate && $hasAppointmentDate->num_rows === 0) {
+    $schemaConn->query("ALTER TABLE reports ADD COLUMN appointment_date DATE NULL AFTER report_date");
+}
+
+$hasAppointmentTime = $schemaConn->query("SHOW COLUMNS FROM reports LIKE 'appointment_time'");
+if ($hasAppointmentTime && $hasAppointmentTime->num_rows === 0) {
+    $schemaConn->query("ALTER TABLE reports ADD COLUMN appointment_time TIME NULL AFTER appointment_date");
+}
+$schemaConn->close();
+
 // Get all reports, including whether the patient already has an active link
-$query = "SELECT r.id, r.report_date, r.created_at, r.patient_id,
+$query = "SELECT r.id, r.report_date, r.appointment_date, r.appointment_time, r.created_at, r.patient_id,
                  p.name as patient_name, p.civil_id,
                  d.name as doctor_name,
                  u.full_name as generated_by,
                  COALESCE(rl.active_links, 0) AS active_links
           FROM reports r
-          JOIN patients p ON r.patient_id = p.id
-          JOIN doctors d ON r.doctor_id = d.id
+          LEFT JOIN patients p ON r.patient_id = p.id
+          LEFT JOIN doctors d ON r.doctor_id = d.id
           LEFT JOIN users u ON r.user_id = u.id
           LEFT JOIN (
               SELECT patient_id, COUNT(*) AS active_links
@@ -218,6 +231,8 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                                         <th>Patient Name</th>
                                         <th>Civil ID</th>
                                         <th>Report Date</th>
+                                        <th>Appointment Date</th>
+                                        <th>Appointment Time</th>
                                         <th>Doctor</th>
                                         <th>Created By</th>
                                         <th>Created At</th>
@@ -236,6 +251,8 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                                             echo "<td>{$row['patient_name']}</td>";
                                             echo "<td>{$row['civil_id']}</td>";
                                             echo "<td>" . date('Y-m-d', strtotime($row['report_date'])) . "</td>";
+                                            echo "<td>" . (!empty($row['appointment_date']) ? date('Y-m-d', strtotime($row['appointment_date'])) : '-') . "</td>";
+                                            echo "<td>" . (!empty($row['appointment_time']) ? date('H:i', strtotime($row['appointment_time'])) : '-') . "</td>";
                                             echo "<td>{$row['doctor_name']}</td>";
                                             echo "<td>{$row['generated_by']}</td>";
                                             echo "<td>" . date('Y-m-d H:i', strtotime($row['created_at'])) . "</td>";
