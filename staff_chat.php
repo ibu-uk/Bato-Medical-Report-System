@@ -359,6 +359,7 @@ $conn->close();
     const chatUnreadCountKey = `staff_chat_unread_count_${currentUserId}`;
     let lastMessageId = 0;
     let isSending = false;
+    const renderedMessageIds = new Set();
 
     function persistSeenState() {
         localStorage.setItem(chatLatestSeenKey, String(lastMessageId));
@@ -388,8 +389,12 @@ $conn->close();
     }
 
     function appendMessage(msg, shouldAutoScroll = true) {
-        if (!msg || !msg.id) return;
-        lastMessageId = Math.max(lastMessageId, Number(msg.id));
+        const messageId = Number(msg?.id || 0);
+        if (messageId <= 0) return;
+        if (renderedMessageIds.has(messageId)) return;
+
+        renderedMessageIds.add(messageId);
+        lastMessageId = Math.max(lastMessageId, messageId);
         persistSeenState();
 
         const row = document.createElement('div');
@@ -485,6 +490,7 @@ $conn->close();
             if (reset) {
                 lastMessageId = 0;
                 chatMessagesEl.innerHTML = '';
+                renderedMessageIds.clear();
             }
 
             const query = new URLSearchParams();
@@ -637,6 +643,7 @@ $conn->close();
 
             chatMessagesEl.innerHTML = '';
             lastMessageId = 0;
+            renderedMessageIds.clear();
             persistSeenState();
             alert('Chat cleared successfully.');
         } catch (error) {

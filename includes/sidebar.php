@@ -55,6 +55,9 @@
                 <ul class="collapse submenu" id="patientsSubmenu">
                     <li><a href="add_patient.php" class="nav-link">Add Patient</a></li>
                     <li><a href="patient_list.php" class="nav-link">Patient List</a></li>
+                    <?php if (hasRole(['admin'])): ?>
+                    <li><a href="manage_document_categories.php" class="nav-link">Document Categories</a></li>
+                    <?php endif; ?>
                 </ul>
             </li>
 
