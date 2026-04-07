@@ -258,6 +258,11 @@ if ($docCountStmt) {
 $docCategoryFilter = trim((string)($_GET['doc_category'] ?? ''));
 $docFileTypeFilter = trim((string)($_GET['doc_file_type'] ?? ''));
 $docSearch = trim((string)($_GET['doc_search'] ?? ''));
+$docCurrentPage = isset($_GET['doc_page']) ? (int)$_GET['doc_page'] : 1;
+if ($docCurrentPage < 1) {
+    $docCurrentPage = 1;
+}
+$docPerPage = 100;
 
 if ($docCategoryFilter !== '' && !isset($documentCategoryLookup[$docCategoryFilter])) {
     $docCategoryFilter = '';
@@ -265,6 +270,46 @@ if ($docCategoryFilter !== '' && !isset($documentCategoryLookup[$docCategoryFilt
 if (!in_array($docFileTypeFilter, ['', 'pdf', 'image'], true)) {
     $docFileTypeFilter = '';
 }
+
+$docFilteredCountQuery = "SELECT COUNT(*) AS total FROM patient_documents pd WHERE pd.patient_id = ?";
+$docFilteredCountParams = [$patient_id];
+$docFilteredCountTypes = 'i';
+
+if ($docCategoryFilter !== '') {
+    $docFilteredCountQuery .= " AND pd.document_category = ?";
+    $docFilteredCountParams[] = $docCategoryFilter;
+    $docFilteredCountTypes .= 's';
+}
+if ($docFileTypeFilter === 'pdf') {
+    $docFilteredCountQuery .= " AND pd.file_mime = 'application/pdf'";
+} elseif ($docFileTypeFilter === 'image') {
+    $docFilteredCountQuery .= " AND pd.file_mime LIKE 'image/%'";
+}
+if ($docSearch !== '') {
+    $docFilteredCountQuery .= " AND (pd.document_title LIKE ? OR pd.file_name LIKE ? OR pd.notes LIKE ?)";
+    $docSearchLike = '%' . $docSearch . '%';
+    $docFilteredCountParams[] = $docSearchLike;
+    $docFilteredCountParams[] = $docSearchLike;
+    $docFilteredCountParams[] = $docSearchLike;
+    $docFilteredCountTypes .= 'sss';
+}
+
+$docFilteredCount = 0;
+$docFilteredCountStmt = $conn->prepare($docFilteredCountQuery);
+if ($docFilteredCountStmt && bindDynamicParams($docFilteredCountStmt, $docFilteredCountTypes, $docFilteredCountParams)) {
+    $docFilteredCountStmt->execute();
+    $docFilteredCountResult = $docFilteredCountStmt->get_result();
+    if ($docFilteredCountResult && ($docFilteredCountRow = $docFilteredCountResult->fetch_assoc())) {
+        $docFilteredCount = (int)($docFilteredCountRow['total'] ?? 0);
+    }
+    $docFilteredCountStmt->close();
+}
+
+$docTotalPages = max(1, (int)ceil($docFilteredCount / $docPerPage));
+if ($docCurrentPage > $docTotalPages) {
+    $docCurrentPage = $docTotalPages;
+}
+$docOffset = ($docCurrentPage - 1) * $docPerPage;
 
 $documentsQuery = "SELECT pd.*, u.full_name AS uploaded_by_name
                    FROM patient_documents pd
@@ -292,7 +337,10 @@ if ($docSearch !== '') {
     $docTypes .= 'sss';
 }
 
-$documentsQuery .= " ORDER BY pd.created_at DESC LIMIT 300";
+$documentsQuery .= " ORDER BY pd.created_at DESC LIMIT ? OFFSET ?";
+$docParams[] = $docPerPage;
+$docParams[] = $docOffset;
+$docTypes .= 'ii';
 
 $patientDocuments = [];
 $docStmt = $conn->prepare($documentsQuery);
@@ -635,12 +683,12 @@ $treatments = $stmt->get_result();
                 </div>
                 <div class="card-body">
                     <?php if ($documentUploadSuccess): ?>
-                        <div class="alert alert-success">
+                        <div class="alert alert-success doc-alert-auto-dismiss">
                             <i class="fas fa-check-circle me-1"></i> Document uploaded successfully.
                         </div>
                     <?php endif; ?>
                     <?php if ($documentDeleteSuccess): ?>
-                        <div class="alert alert-success">
+                        <div class="alert alert-success doc-alert-auto-dismiss">
                             <i class="fas fa-trash-alt me-1"></i> Document deleted successfully.
                         </div>
                     <?php endif; ?>
@@ -827,6 +875,28 @@ $treatments = $stmt->get_result();
                                 </tbody>
                             </table>
                         </div>
+
+                        <?php if ($docTotalPages > 1): ?>
+                            <nav aria-label="Documents pagination" class="mt-3">
+                                <ul class="pagination pagination-sm mb-0">
+                                    <?php
+                                    $docPageWindowStart = max(1, $docCurrentPage - 2);
+                                    $docPageWindowEnd = min($docTotalPages, $docCurrentPage + 2);
+                                    ?>
+                                    <li class="page-item <?php echo $docCurrentPage <= 1 ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="view_patient.php?id=<?php echo $patient_id; ?>&tab=documents&doc_page=<?php echo max(1, $docCurrentPage - 1); ?>&doc_category=<?php echo urlencode($docCategoryFilter); ?>&doc_file_type=<?php echo urlencode($docFileTypeFilter); ?>&doc_search=<?php echo urlencode($docSearch); ?>">Previous</a>
+                                    </li>
+                                    <?php for ($p = $docPageWindowStart; $p <= $docPageWindowEnd; $p++): ?>
+                                        <li class="page-item <?php echo $p === $docCurrentPage ? 'active' : ''; ?>">
+                                            <a class="page-link" href="view_patient.php?id=<?php echo $patient_id; ?>&tab=documents&doc_page=<?php echo $p; ?>&doc_category=<?php echo urlencode($docCategoryFilter); ?>&doc_file_type=<?php echo urlencode($docFileTypeFilter); ?>&doc_search=<?php echo urlencode($docSearch); ?>"><?php echo $p; ?></a>
+                                        </li>
+                                    <?php endfor; ?>
+                                    <li class="page-item <?php echo $docCurrentPage >= $docTotalPages ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="view_patient.php?id=<?php echo $patient_id; ?>&tab=documents&doc_page=<?php echo min($docTotalPages, $docCurrentPage + 1); ?>&doc_category=<?php echo urlencode($docCategoryFilter); ?>&doc_file_type=<?php echo urlencode($docFileTypeFilter); ?>&doc_search=<?php echo urlencode($docSearch); ?>">Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        <?php endif; ?>
                     <?php else: ?>
                         <div class="alert alert-info mb-0">
                             <i class="fas fa-info-circle me-2"></i>No patient documents found for current filters.
@@ -847,6 +917,36 @@ $treatments = $stmt->get_result();
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    (function handleDocumentSuccessAlerts() {
+        var alerts = document.querySelectorAll('.doc-alert-auto-dismiss');
+        if (!alerts.length) {
+            return;
+        }
+
+        setTimeout(function() {
+            alerts.forEach(function(alertEl) {
+                alertEl.style.transition = 'opacity 0.3s ease';
+                alertEl.style.opacity = '0';
+                setTimeout(function() {
+                    if (alertEl && alertEl.parentNode) {
+                        alertEl.parentNode.removeChild(alertEl);
+                    }
+                }, 300);
+            });
+        }, 5000);
+
+        try {
+            var currentUrl = new URL(window.location.href);
+            if (currentUrl.searchParams.has('uploaded') || currentUrl.searchParams.has('deleted')) {
+                currentUrl.searchParams.delete('uploaded');
+                currentUrl.searchParams.delete('deleted');
+                window.history.replaceState({}, document.title, currentUrl.toString());
+            }
+        } catch (e) {
+            // Silently ignore URL API issues on older browsers.
+        }
+    })();
 </script>
 
 <?php

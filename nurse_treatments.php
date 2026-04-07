@@ -48,16 +48,30 @@ $stmt = $conn->prepare("SELECT p.name FROM nurse_treatments nt JOIN patients p O
     exit;
 }
 
-$totalTreatments = 0;
-$totalTreatmentsResult = executeQuery("SELECT COUNT(*) AS total FROM nurse_treatments");
-if ($totalTreatmentsResult && $row = $totalTreatmentsResult->fetch_assoc()) {
-    $totalTreatments = (int)$row['total'];
+$search = '';
+$filterDateFrom = '';
+$filterDateTo = '';
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) {
+    $page = 1;
+}
+$per_page = 10;
+
+if (isset($_GET['search'])) {
+    $search = trim((string)$_GET['search']);
+}
+if (isset($_GET['date_from'])) {
+    $filterDateFrom = trim((string)$_GET['date_from']);
+}
+if (isset($_GET['date_to'])) {
+    $filterDateTo = trim((string)$_GET['date_to']);
 }
 
-$treatmentsToday = 0;
-$treatmentsTodayResult = executeQuery("SELECT COUNT(*) AS total FROM nurse_treatments WHERE treatment_date = CURDATE()");
-if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
-    $treatmentsToday = (int)$row['total'];
+if ($filterDateFrom !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateFrom)) {
+    $filterDateFrom = '';
+}
+if ($filterDateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateTo)) {
+    $filterDateTo = '';
 }
 ?>
 <!DOCTYPE html>
@@ -204,27 +218,6 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
             </div>
         </div>
 
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <div class="summary-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="summary-label">Total Nurse Treatments</div>
-                        <div class="summary-value"><?php echo $totalTreatments; ?></div>
-                    </div>
-                    <span class="summary-icon"><i class="fas fa-user-nurse"></i></span>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="summary-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="summary-label">Treatments Today</div>
-                        <div class="summary-value"><?php echo $treatmentsToday; ?></div>
-                    </div>
-                    <span class="summary-icon"><i class="fas fa-calendar-day"></i></span>
-                </div>
-            </div>
-        </div>
-
 <div class="row">
             <div class="col-12">
                 <div class="card">
@@ -251,7 +244,31 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
             }
             ?>
             
-            <!-- Table will be here -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <form class="row g-2 align-items-end" method="get" action="nurse_treatments.php">
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label mb-1">Search</label>
+                            <input class="form-control" type="search" name="search" placeholder="Patient, file #, or nurse..." value="<?php echo htmlspecialchars($search); ?>">
+                        </div>
+                        <div class="col-lg-2 col-md-3">
+                            <label class="form-label mb-1">From Date</label>
+                            <input class="form-control" type="date" name="date_from" value="<?php echo htmlspecialchars($filterDateFrom); ?>">
+                        </div>
+                        <div class="col-lg-2 col-md-3">
+                            <label class="form-label mb-1">To Date</label>
+                            <input class="form-control" type="date" name="date_to" value="<?php echo htmlspecialchars($filterDateTo); ?>">
+                        </div>
+                        <div class="col-lg-4 col-md-8 d-flex gap-2">
+                            <button class="btn btn-outline-secondary w-100" type="submit">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                            <a href="nurse_treatments.php" class="btn btn-outline-danger">Clear</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Treatments table -->
             <div class="table-responsive">
                 <table id="nurseTreatmentsTable" class="table table-striped table-hover">
@@ -276,22 +293,30 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
                         }
                         
                         // Pagination variables
-                        $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
-                        $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
-                        $per_page = 10; // Items per page
+                        $searchSql = $conn->real_escape_string($search);
+                        $filterDateFromSql = $conn->real_escape_string($filterDateFrom);
+                        $filterDateToSql = $conn->real_escape_string($filterDateTo);
+
                         $offset = ($page - 1) * $per_page;
 
                         // Build search condition
                         $search_condition = '';
-                        if (!empty($search)) {
-                            $search_condition = " AND (p.name LIKE '%$search%' OR p.file_number LIKE '%$search%' OR nt.nurse_name LIKE '%$search%')";
+                        if (!empty($searchSql)) {
+                            $search_condition = " AND (p.name LIKE '%$searchSql%' OR p.file_number LIKE '%$searchSql%' OR nt.nurse_name LIKE '%$searchSql%')";
+                        }
+                        $date_condition = '';
+                        if ($filterDateFromSql !== '') {
+                            $date_condition .= " AND DATE(nt.treatment_date) >= '$filterDateFromSql'";
+                        }
+                        if ($filterDateToSql !== '') {
+                            $date_condition .= " AND DATE(nt.treatment_date) <= '$filterDateToSql'";
                         }
                         
                         // Get total count for pagination
                         $count_query = "SELECT COUNT(*) AS total 
                                       FROM nurse_treatments nt
                                       JOIN patients p ON nt.patient_id = p.id
-                                      WHERE 1=1 $search_condition";
+                                      WHERE 1=1 $search_condition $date_condition";
                         $count_result = executeQuery($count_query);
                         $total = 0;
                         if ($count_result && $row = $count_result->fetch_assoc()) {
@@ -307,14 +332,18 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
                                  END as is_today
                                  FROM nurse_treatments nt
                                  JOIN patients p ON nt.patient_id = p.id
-                                 WHERE 1=1 $search_condition
+                                 WHERE 1=1 $search_condition $date_condition
                                  ORDER BY is_today ASC, nt.treatment_date DESC
                                  LIMIT $per_page OFFSET $offset";
                         
                         $result = executeQuery($query);
+                        $noTreatmentRecords = true;
+                        $currentPageCount = 0;
                         
                         if ($result && $result->num_rows > 0) {
+                            $noTreatmentRecords = false;
                             while ($row = $result->fetch_assoc()) {
+                                $currentPageCount++;
                                 $payment_badge = $row['payment_status'] == 'Paid' ? 
                                     '<span class="badge bg-success">Paid</span>' : 
                                     '<span class="badge bg-warning text-dark">Unpaid</span>';
@@ -366,12 +395,23 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
                                       </td>";
                                 echo "</tr>";
                             }
-                        } else {
-                            echo "<tr><td colspan='6' class='text-center'>No treatment records found</td></tr>";
                         }
                         ?>
                     </tbody>
                 </table>
+
+                <?php $hasActiveTreatmentFilters = ($search !== '' || $filterDateFrom !== '' || $filterDateTo !== ''); ?>
+                <div class="alert alert-light border mt-3 mb-0">
+                    <strong>Total Treatments<?php echo $hasActiveTreatmentFilters ? ' (Filtered)' : ''; ?>:</strong>
+                    <?php echo (int)$total; ?>
+                    <span class="ms-3 text-muted">Showing <?php echo (int)$currentPageCount; ?> on this page</span>
+                </div>
+
+                <?php if ($noTreatmentRecords): ?>
+                    <div class="alert alert-info mt-3 mb-0 text-center">
+                        <i class="fas fa-info-circle me-1"></i> No treatment records found for the selected filters.
+                    </div>
+                <?php endif; ?>
 
                 <!-- Pagination -->
                 <?php if ($total_pages > 1): ?>
@@ -396,10 +436,10 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
                         <ul class="pagination justify-content-center">
                             <?php if ($page > 1): ?>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1&search=<?php echo urlencode($search); ?>">First</a>
+                                    <a class="page-link" href="?page=1&search=<?php echo urlencode($search); ?>&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>">First</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>">Previous</a>
+                                    <a class="page-link" href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>">Previous</a>
                                 </li>
                             <?php endif; ?>
 
@@ -409,7 +449,7 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
                             
                             // Show first page with ellipsis if needed
                             if ($start > 1) {
-                                echo '<li class="page-item"><a class="page-link" href="?page=1&search='.urlencode($search).'">1</a></li>';
+                                echo '<li class="page-item"><a class="page-link" href="?page=1&search='.urlencode($search).'&date_from='.urlencode($filterDateFrom).'&date_to='.urlencode($filterDateTo).'">1</a></li>';
                                 if ($start > 2) {
                                     echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
                                 }
@@ -418,7 +458,7 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
                             for ($i = $start; $i <= $end; $i++):
                             ?>
                                 <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                                    <a class="page-link" href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>"><?php echo $i; ?></a>
+                                    <a class="page-link" href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>"><?php echo $i; ?></a>
                                 </li>
                             <?php 
                             endfor; 
@@ -428,16 +468,16 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
                                 if ($end < $total_pages - 1) {
                                     echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
                                 }
-                                echo '<li class="page-item"><a class="page-link" href="?page='.$total_pages.'&search='.urlencode($search).'">'.$total_pages.'</a></li>';
+                                echo '<li class="page-item"><a class="page-link" href="?page='.$total_pages.'&search='.urlencode($search).'&date_from='.urlencode($filterDateFrom).'&date_to='.urlencode($filterDateTo).'">'.$total_pages.'</a></li>';
                             }
                             ?>
 
                             <?php if ($page < $total_pages): ?>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>">Next</a>
+                                    <a class="page-link" href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>">Next</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=<?php echo $total_pages; ?>&search=<?php echo urlencode($search); ?>">Last</a>
+                                    <a class="page-link" href="?page=<?php echo $total_pages; ?>&search=<?php echo urlencode($search); ?>&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>">Last</a>
                                 </li>
                             <?php endif; ?>
                         </ul>
@@ -469,35 +509,5 @@ if ($treatmentsTodayResult && $row = $treatmentsTodayResult->fetch_assoc()) {
                 dom: 't'           // Only show the table (no other elements)
             });
 
-            // Add our custom search box
-            var searchHtml = `
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <form class="d-flex align-items-center" role="search" method="get" action="nurse_treatments.php">
-                            <div class="input-group" style="max-width: 500px;">
-                                <input class="form-control" type="search" name="search" 
-                                       placeholder="Search by patient, file #, or nurse..." 
-                                       value="<?php echo htmlspecialchars($search); ?>">
-                                <button class="btn btn-outline-secondary" type="submit">
-                                    <i class="fas fa-search"></i> Search
-                                </button>
-                                <?php if (!empty($search)): ?>
-                                    <a href="nurse_treatments.php" class="btn btn-outline-danger">
-                                        <i class="fas fa-times"></i> Clear
-                                    </a>
-                                <?php endif; ?>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-            
-            // Insert search box before the table
-            $('.table-responsive').before(searchHtml);
-            
-            // Make the search form work with our server-side search
-            $('form[role="search"]').on('submit', function(e) {
-                // Let the form submit normally - we're using method="get"
-            });
         });
     </script>

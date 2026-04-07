@@ -59,16 +59,14 @@ $stmt = $conn->prepare("SELECT p.name FROM prescriptions pr JOIN patients p ON p
     exit;
 }
 
-$totalPrescriptions = 0;
-$totalPrescriptionsResult = executeQuery("SELECT COUNT(*) AS total FROM prescriptions");
-if ($totalPrescriptionsResult && $row = $totalPrescriptionsResult->fetch_assoc()) {
-    $totalPrescriptions = (int)$row['total'];
-}
+$filterDateFrom = isset($_GET['date_from']) ? trim((string)$_GET['date_from']) : '';
+$filterDateTo = isset($_GET['date_to']) ? trim((string)$_GET['date_to']) : '';
 
-$prescriptionsToday = 0;
-$prescriptionsTodayResult = executeQuery("SELECT COUNT(*) AS total FROM prescriptions WHERE prescription_date = CURDATE()");
-if ($prescriptionsTodayResult && $row = $prescriptionsTodayResult->fetch_assoc()) {
-    $prescriptionsToday = (int)$row['total'];
+if ($filterDateFrom !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateFrom)) {
+    $filterDateFrom = '';
+}
+if ($filterDateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateTo)) {
+    $filterDateTo = '';
 }
 ?>
 <!DOCTYPE html>
@@ -145,38 +143,6 @@ if ($prescriptionsTodayResult && $row = $prescriptionsTodayResult->fetch_assoc()
             font-size: 0.8rem;
             letter-spacing: 0.5px;
         }
-        .summary-card {
-            border: 1px solid #cfe0ef;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #f7fbff 0%, #eef5fc 100%);
-            box-shadow: 0 8px 18px rgba(18, 61, 101, 0.12);
-            padding: 0.9rem 1rem;
-            height: 100%;
-        }
-        .summary-label {
-            color: #5b6f84;
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.2rem;
-        }
-        .summary-value {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #143f64;
-            line-height: 1.1;
-        }
-        .summary-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            border: 2px solid #9db9d5;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #ffffff;
-            color: #1c5785;
-        }
     </style>
 </head>
 <body style="padding: 20px; margin: 0;">
@@ -187,27 +153,6 @@ if ($prescriptionsTodayResult && $row = $prescriptionsTodayResult->fetch_assoc()
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="d-inline-block">Prescriptions</h2>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <div class="summary-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="summary-label">Total Prescriptions</div>
-                        <div class="summary-value"><?php echo $totalPrescriptions; ?></div>
-                    </div>
-                    <span class="summary-icon"><i class="fas fa-prescription"></i></span>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="summary-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="summary-label">Prescriptions Today</div>
-                        <div class="summary-value"><?php echo $prescriptionsToday; ?></div>
-                    </div>
-                    <span class="summary-icon"><i class="fas fa-calendar-day"></i></span>
-                </div>
             </div>
         </div>
 
@@ -235,6 +180,23 @@ if ($prescriptionsTodayResult && $row = $prescriptionsTodayResult->fetch_assoc()
                             unset($_SESSION['error']);
                         }
                         ?>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">From Date</label>
+                                <input type="date" class="form-control" name="date_from" form="prescriptionDateFilterForm" value="<?php echo htmlspecialchars($filterDateFrom); ?>">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">To Date</label>
+                                <input type="date" class="form-control" name="date_to" form="prescriptionDateFilterForm" value="<?php echo htmlspecialchars($filterDateTo); ?>">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end gap-2">
+                                <form id="prescriptionDateFilterForm" method="get" action="prescriptions.php" class="w-100">
+                                    <button type="submit" class="btn btn-outline-secondary w-100">Filter</button>
+                                </form>
+                                <a href="prescriptions.php" class="btn btn-outline-danger">Clear</a>
+                            </div>
+                        </div>
                         
                         <div class="table-responsive">
                             <table id="prescriptionsTable" class="table table-hover">
@@ -252,6 +214,15 @@ if ($prescriptionsTodayResult && $row = $prescriptionsTodayResult->fetch_assoc()
                         <?php
                         // No backend search: DataTables handles searching client-side
                         $search_condition = '';
+                        $date_condition = '';
+                        if ($filterDateFrom !== '') {
+                            $dateFromSql = sanitize($filterDateFrom);
+                            $date_condition .= " AND DATE(pr.prescription_date) >= '$dateFromSql'";
+                        }
+                        if ($filterDateTo !== '') {
+                            $dateToSql = sanitize($filterDateTo);
+                            $date_condition .= " AND DATE(pr.prescription_date) <= '$dateToSql'";
+                        }
                         
                         // Pagination variables
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -263,7 +234,7 @@ $count_query = "SELECT COUNT(*) AS total
                 FROM prescriptions pr
                 JOIN patients p ON pr.patient_id = p.id
                 JOIN doctors d ON pr.doctor_id = d.id
-                WHERE 1=1 $search_condition";
+                WHERE 1=1 $search_condition $date_condition";
 $count_result = executeQuery($count_query);
 $total = 0;
 if ($count_result && $row = $count_result->fetch_assoc()) {
@@ -280,14 +251,18 @@ $query = "SELECT pr.id, pr.prescription_date, p.name AS patient_name, p.file_num
           FROM prescriptions pr
           JOIN patients p ON pr.patient_id = p.id
           JOIN doctors d ON pr.doctor_id = d.id
-          WHERE 1=1 $search_condition
+          WHERE 1=1 $search_condition $date_condition
           ORDER BY is_today ASC, pr.prescription_date DESC
           LIMIT $per_page OFFSET $offset";
 
 $result = executeQuery($query);
+$currentPageCount = 0;
+$noPrescriptionRecords = true;
 
                         if ($result && $result->num_rows > 0) {
+                            $noPrescriptionRecords = false;
                             while ($row = $result->fetch_assoc()) {
+                                $currentPageCount++;
                                 echo "<tr>";
                                 echo "<td>{$row['id']}</td>";
                                 echo "<td class='prescription-date'>" . date('d-m-Y', strtotime($row['prescription_date'])) . "</td>";
@@ -317,12 +292,22 @@ $result = executeQuery($query);
                                 }
                                 echo "</td></tr>";
                             }
-                        } else {
-                            echo "<tr><td colspan='5' class='text-center'>No prescriptions found</td></tr>";
                         }
                         ?>
                     </tbody>
                 </table>
+            </div>
+
+            <?php if ($noPrescriptionRecords): ?>
+                <div class="alert alert-info mt-3 mb-0 text-center">
+                    <i class="fas fa-info-circle me-1"></i> No prescriptions found for the selected date range.
+                </div>
+            <?php endif; ?>
+
+            <div class="alert alert-light border mt-3 mb-0" id="prescriptionsSummaryLine">
+                <strong>Total Prescriptions (Filtered):</strong>
+                <span id="prescriptionsTotalFiltered"><?php echo (int)$total; ?></span>
+                <span class="ms-3 text-muted">Showing <span id="prescriptionsShowingOnPage"><?php echo (int)$currentPageCount; ?></span> on this page</span>
             </div>
 
             <!-- Pagination -->
@@ -348,10 +333,10 @@ $result = executeQuery($query);
                     <ul class="pagination justify-content-center">
                         <?php if ($page > 1): ?>
                             <li class="page-item">
-                                <a class="page-link" href="?page=1">First</a>
+                                <a class="page-link" href="?page=1&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>">First</a>
                             </li>
                             <li class="page-item">
-                                <a class="page-link" href="?page=<?php echo $page - 1; ?>">Previous</a>
+                                <a class="page-link" href="?page=<?php echo $page - 1; ?>&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>">Previous</a>
                             </li>
                         <?php endif; ?>
 
@@ -361,7 +346,7 @@ $result = executeQuery($query);
                         
                         // Show first page with ellipsis if needed
                         if ($start > 1) {
-                            echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                            echo '<li class="page-item"><a class="page-link" href="?page=1&date_from='.urlencode($filterDateFrom).'&date_to='.urlencode($filterDateTo).'">1</a></li>';
                             if ($start > 2) {
                                 echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
                             }
@@ -370,7 +355,7 @@ $result = executeQuery($query);
                         for ($i = $start; $i <= $end; $i++):
                         ?>
                             <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                                <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                                <a class="page-link" href="?page=<?php echo $i; ?>&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>"><?php echo $i; ?></a>
                             </li>
                         <?php 
                         endfor; 
@@ -380,16 +365,16 @@ $result = executeQuery($query);
                             if ($end < $total_pages - 1) {
                                 echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
                             }
-                            echo '<li class="page-item"><a class="page-link" href="?page='.$total_pages.'">'.$total_pages.'</a></li>';
+                            echo '<li class="page-item"><a class="page-link" href="?page='.$total_pages.'&date_from='.urlencode($filterDateFrom).'&date_to='.urlencode($filterDateTo).'">'.$total_pages.'</a></li>';
                         }
                         ?>
 
                         <?php if ($page < $total_pages): ?>
                             <li class="page-item">
-                                <a class="page-link" href="?page=<?php echo $page + 1; ?>">Next</a>
+                                <a class="page-link" href="?page=<?php echo $page + 1; ?>&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>">Next</a>
                             </li>
                             <li class="page-item">
-                                <a class="page-link" href="?page=<?php echo $total_pages; ?>">Last</a>
+                                <a class="page-link" href="?page=<?php echo $total_pages; ?>&date_from=<?php echo urlencode($filterDateFrom); ?>&date_to=<?php echo urlencode($filterDateTo); ?>">Last</a>
                             </li>
                         <?php endif; ?>
                     </ul>
@@ -420,7 +405,7 @@ $result = executeQuery($query);
             }
 
             // Disable DataTables pagination since we're using server-side pagination
-            $('#prescriptionsTable').DataTable({
+            const prescriptionsDataTable = $('#prescriptionsTable').DataTable({
                 paging: false,
                 searching: true,
                 info: false,
@@ -451,6 +436,18 @@ $result = executeQuery($query);
                     }
                 ]
             });
+
+            function updatePrescriptionsSummaryLine() {
+                const filteredTotal = prescriptionsDataTable.rows({ search: 'applied' }).count();
+                const currentPageTotal = prescriptionsDataTable.rows({ page: 'current', search: 'applied' }).count();
+                const filteredEl = document.getElementById('prescriptionsTotalFiltered');
+                const pageEl = document.getElementById('prescriptionsShowingOnPage');
+                if (filteredEl) filteredEl.textContent = String(filteredTotal);
+                if (pageEl) pageEl.textContent = String(currentPageTotal);
+            }
+
+            prescriptionsDataTable.on('draw', updatePrescriptionsSummaryLine);
+            updatePrescriptionsSummaryLine();
         });
     </script>
 </body>

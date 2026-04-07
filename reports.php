@@ -27,6 +27,26 @@ if ($hasAppointmentTime && $hasAppointmentTime->num_rows === 0) {
 }
 $schemaConn->close();
 
+// Get date filters from GET parameters
+$filterDateFrom = isset($_GET['date_from']) ? trim((string)$_GET['date_from']) : '';
+$filterDateTo = isset($_GET['date_to']) ? trim((string)$_GET['date_to']) : '';
+
+if ($filterDateFrom !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateFrom)) {
+    $filterDateFrom = '';
+}
+if ($filterDateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateTo)) {
+    $filterDateTo = '';
+}
+
+// Build date condition for query
+$dateCondition = '';
+if ($filterDateFrom !== '') {
+    $dateCondition .= " AND DATE(r.report_date) >= '" . sanitize($filterDateFrom) . "'";
+}
+if ($filterDateTo !== '') {
+    $dateCondition .= " AND DATE(r.report_date) <= '" . sanitize($filterDateTo) . "'";
+}
+
 // Get all reports, including whether the patient already has an active link
 $query = "SELECT r.id, r.report_date, r.appointment_date, r.appointment_time, r.created_at, r.patient_id,
                  p.name as patient_name, p.civil_id,
@@ -43,20 +63,10 @@ $query = "SELECT r.id, r.report_date, r.appointment_date, r.appointment_time, r.
               WHERE expiry_date > NOW()
               GROUP BY patient_id
           ) rl ON rl.patient_id = r.patient_id
+          WHERE 1=1 $dateCondition
           ORDER BY r.created_at DESC";
 $reports = executeQuery($query);
 
-$totalReports = 0;
-$totalReportsResult = executeQuery("SELECT COUNT(*) AS total FROM reports");
-if ($totalReportsResult && $row = $totalReportsResult->fetch_assoc()) {
-    $totalReports = (int)$row['total'];
-}
-
-$reportsToday = 0;
-$reportsTodayResult = executeQuery("SELECT COUNT(*) AS total FROM reports WHERE report_date = CURDATE()");
-if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
-    $reportsToday = (int)$row['total'];
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -134,38 +144,6 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
             background-color: #6c757d;
             border-color: #6c757d;
         }
-        .summary-card {
-            border: 1px solid #cfe0ef;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #f7fbff 0%, #eef5fc 100%);
-            box-shadow: 0 8px 18px rgba(18, 61, 101, 0.12);
-            padding: 0.9rem 1rem;
-            height: 100%;
-        }
-        .summary-label {
-            color: #5b6f84;
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.2rem;
-        }
-        .summary-value {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #143f64;
-            line-height: 1.1;
-        }
-        .summary-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            border: 2px solid #9db9d5;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #ffffff;
-            color: #1c5785;
-        }
     </style>
 </head>
 <body>
@@ -176,27 +154,6 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
                 <h2 class="d-inline-block">Medical Reports</h2>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-3">
-            <div class="col-md-6">
-                <div class="summary-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="summary-label">Total Reports</div>
-                        <div class="summary-value"><?php echo $totalReports; ?></div>
-                    </div>
-                    <span class="summary-icon"><i class="fas fa-file-medical"></i></span>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="summary-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="summary-label">Reports Today</div>
-                        <div class="summary-value"><?php echo $reportsToday; ?></div>
-                    </div>
-                    <span class="summary-icon"><i class="fas fa-calendar-day"></i></span>
-                </div>
             </div>
         </div>
 
@@ -223,6 +180,22 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                             unset($_SESSION['error']);
                         }
                         ?>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">From Date</label>
+                                <input type="date" class="form-control" name="date_from" form="reportDateFilterForm" value="<?php echo htmlspecialchars($filterDateFrom); ?>">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">To Date</label>
+                                <input type="date" class="form-control" name="date_to" form="reportDateFilterForm" value="<?php echo htmlspecialchars($filterDateTo); ?>">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end gap-2">
+                                <form id="reportDateFilterForm" method="get" action="reports.php" class="w-100">
+                                    <button type="submit" class="btn btn-outline-secondary w-100">Filter</button>
+                                </form>
+                                <a href="reports.php" class="btn btn-outline-danger">Clear</a>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table id="reportsTable" class="table">
                                 <thead>
@@ -242,8 +215,10 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                                 </thead>
                                 <tbody>
                                     <?php
+                                    $reportRowsRendered = 0;
                                     if ($reports && $reports->num_rows > 0) {
                                         while ($row = $reports->fetch_assoc()) {
+                                            $reportRowsRendered++;
                                             echo "<tr>";
                                             echo "<td>{$row['patient_name']}</td>";
                                             echo "<td>{$row['civil_id']}</td>";
@@ -296,6 +271,11 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                                     ?>
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="alert alert-light border mt-3 mb-0" id="reportsSummaryLine">
+                            <strong>Total Reports (Filtered):</strong>
+                            <span id="reportsTotalFiltered"><?php echo (int)$reportRowsRendered; ?></span>
+                            <span class="ms-3 text-muted">Showing <span id="reportsShowingOnPage"><?php echo (int)$reportRowsRendered; ?></span> on this page</span>
                         </div>
                     </div>
                 </div>
@@ -605,6 +585,18 @@ if ($reportsTodayResult && $row = $reportsTodayResult->fetch_assoc()) {
                 );
             }
         });
+
+        function updateReportsSummaryLine() {
+            const filteredTotal = dataTable.rows({ search: 'applied' }).count();
+            const currentPageTotal = dataTable.rows({ page: 'current', search: 'applied' }).count();
+            const filteredEl = document.getElementById('reportsTotalFiltered');
+            const pageEl = document.getElementById('reportsShowingOnPage');
+            if (filteredEl) filteredEl.textContent = String(filteredTotal);
+            if (pageEl) pageEl.textContent = String(currentPageTotal);
+        }
+
+        dataTable.on('draw', updateReportsSummaryLine);
+        updateReportsSummaryLine();
 
         // Remove DataTables default classes that cause blue highlight
         $('.dataTables_wrapper .dataTables_length select').removeClass('custom-select custom-select-sm');
