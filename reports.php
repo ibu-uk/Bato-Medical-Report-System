@@ -77,12 +77,24 @@ $reports = executeQuery($query);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
 
     <style>
         body {
             background-color: #f8f9fa;
             padding: 20px;
+            padding-left: calc(var(--sidebar-width) + 20px);
         }
+        body.sidebar-collapsed {
+            padding-left: calc(var(--sidebar-collapsed-width) + 20px);
+        }
+        @media (max-width: 768px) {
+            body,
+            body.sidebar-collapsed {
+                padding-left: 20px;
+            }
+        }
+
         .card {
             border: none;
             box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
@@ -101,6 +113,28 @@ $reports = executeQuery($query);
         .action-buttons .btn {
             margin: 0 2px;
             padding: 0.25rem 0.5rem;
+        }
+        .patient-history-btn {
+            background-color: #e9ecef;
+            border-color: #d3d9df;
+            color: #343a40;
+            padding: 0.42rem 0.7rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 3px 8px rgba(108, 117, 125, 0.22);
+        }
+        .patient-history-btn:hover,
+        .patient-history-btn:focus {
+            background-color: #dde2e6;
+            border-color: #c6cdd5;
+            color: #212529;
+        }
+        .patient-history-btn i {
+            font-size: 1.15rem;
+        }
+        .patient-history-btn .doc-mark {
+            margin-left: 0.2rem;
+            font-size: 0.9rem;
+            opacity: 0.95;
         }
         /* Table styling */
         #reportsTable {
@@ -147,11 +181,16 @@ $reports = executeQuery($query);
     </style>
 </head>
 <body>
+    <?php include_once 'includes/sidebar.php'; ?>
+
     <div class="container-fluid">
         <div class="row mb-3">
             <div class="col-12">
                 <a href="dashboard.php" class="btn btn-secondary btn-back">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+                <a href="logout.php" class="btn btn-outline-danger float-end">
+                    <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
                 <h2 class="d-inline-block">Medical Reports</h2>
             </div>
@@ -162,7 +201,7 @@ $reports = executeQuery($query);
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">All Reports</h5>
-                        <?php if (canEditReports()): ?>
+                        <?php if (canEditReports() && !hasRole(['receptionist', 'nurse'])): ?>
                         <a href="index.php" class="btn btn-primary">
                             <i class="fas fa-plus"></i> New Report
                         </a>
@@ -244,12 +283,10 @@ $reports = executeQuery($query);
                                                     <i class="fas fa-eye"></i>
                                                 </a>';
 
-                                            // Users with link-generation permission can generate links
-                                            if (canGenerateLinks()) {
-                                                echo '<a href="javascript:void(0);" onclick="generatePatientLink(' . $row['patient_id'] . ')" class="btn btn-sm btn-outline-success" title="Generate Patient Link">
-                                                        <i class="fas fa-link"></i>
-                                                    </a>';
-                                            }
+                                            // Patient history/documents shortcut
+                                            echo '<a href="view_patient.php?id=' . $row['patient_id'] . '&return_to=reports.php" class="btn patient-history-btn" title="Patient History & Documents" target="_blank">
+                                                    <i class="fas fa-user"></i><i class="fas fa-file-medical doc-mark"></i>
+                                                </a>';
 
                                             // Use per-user permissions for edit/delete
                                             if (canEditReports()) {
@@ -307,6 +344,7 @@ $reports = executeQuery($query);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="assets/js/sidebar.js"></script>
     <?php include_once 'includes/support_ticket_widget.php'; ?>
     
     <script>

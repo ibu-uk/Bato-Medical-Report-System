@@ -10,7 +10,7 @@ require_once 'config/helpers.php';
 require_once 'config/patient_documents.php';
 
 requireLogin();
-if (!canManagePatients()) {
+if (!canManagePatients() && !hasRole(['nurse', 'doctor'])) {
     header('Location: dashboard.php');
     exit;
 }
@@ -22,6 +22,18 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 }
 
 $patient_id = (int)$_GET['id'];
+
+$returnTo = isset($_GET['return_to']) ? trim((string)$_GET['return_to']) : 'patient_list.php';
+$allowedReturnTargets = ['patient_list.php', 'reports.php', 'nurse_treatments.php'];
+if (!in_array($returnTo, $allowedReturnTargets, true)) {
+    $returnTo = 'patient_list.php';
+}
+$backButtonLabel = 'Back to Patients';
+if ($returnTo === 'reports.php') {
+    $backButtonLabel = 'Back to Reports';
+} elseif ($returnTo === 'nurse_treatments.php') {
+    $backButtonLabel = 'Back to Treatments';
+}
 
 // Create database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -355,8 +367,13 @@ if ($docStmt) {
     $docStmt->close();
 }
 
+$canAccessPrescriptions = hasRole(['admin', 'doctor']);
+
 $activeTab = trim((string)($_GET['tab'] ?? 'reports'));
-$allowedTabs = ['reports', 'prescriptions', 'treatments', 'documents'];
+$allowedTabs = ['reports', 'treatments', 'documents'];
+if ($canAccessPrescriptions) {
+    $allowedTabs[] = 'prescriptions';
+}
 if (!in_array($activeTab, $allowedTabs, true)) {
     $activeTab = 'reports';
 }
@@ -372,16 +389,21 @@ $stmt->bind_param('i', $patient_id);
 $stmt->execute();
 $reports = $stmt->get_result();
 
-// Get patient's prescriptions
-$prescriptions_query = "SELECT p.*, d.name as doctor_name 
-                       FROM prescriptions p 
-                       LEFT JOIN doctors d ON p.doctor_id = d.id 
-                       WHERE p.patient_id = ? 
-                       ORDER BY p.prescription_date DESC";
-$stmt = $conn->prepare($prescriptions_query);
-$stmt->bind_param('i', $patient_id);
-$stmt->execute();
-$prescriptions = $stmt->get_result();
+// Get patient's prescriptions (only for roles allowed to access prescriptions)
+$prescriptions = null;
+$prescriptionCount = 0;
+if ($canAccessPrescriptions) {
+    $prescriptions_query = "SELECT p.*, d.name as doctor_name 
+                           FROM prescriptions p 
+                           LEFT JOIN doctors d ON p.doctor_id = d.id 
+                           WHERE p.patient_id = ? 
+                           ORDER BY p.prescription_date DESC";
+    $stmt = $conn->prepare($prescriptions_query);
+    $stmt->bind_param('i', $patient_id);
+    $stmt->execute();
+    $prescriptions = $stmt->get_result();
+    $prescriptionCount = $prescriptions ? (int)$prescriptions->num_rows : 0;
+}
 
 // Get patient's treatments
 $treatments_query = "SELECT * FROM nurse_treatments WHERE patient_id = ? ORDER BY treatment_date DESC";
@@ -454,9 +476,9 @@ $treatments = $stmt->get_result();
     <!-- Main Content -->
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <a href="patient_list.php" class="btn btn-outline-secondary">
+            <a href="<?php echo htmlspecialchars($returnTo); ?>" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>
-                <span class="d-none d-sm-inline">Back to Patients</span>
+                <span class="d-none d-sm-inline"><?php echo htmlspecialchars($backButtonLabel); ?></span>
             </a>
         </div>
     </div>
@@ -512,12 +534,14 @@ $treatments = $stmt->get_result();
                 <span class="badge bg-primary ms-2"><?php echo $reports->num_rows; ?></span>
             </button>
         </li>
+        <?php if ($canAccessPrescriptions): ?>
         <li class="nav-item" role="presentation">
             <button class="nav-link <?php echo $activeTab === 'prescriptions' ? 'active' : ''; ?>" id="prescriptions-tab" data-bs-toggle="tab" data-bs-target="#prescriptions" type="button" role="tab">
                 <i class="fas fa-prescription me-2"></i>Prescriptions
-                <span class="badge bg-success ms-2"><?php echo $prescriptions->num_rows; ?></span>
+                <span class="badge bg-success ms-2"><?php echo $prescriptionCount; ?></span>
             </button>
         </li>
+        <?php endif; ?>
         <li class="nav-item" role="presentation">
             <button class="nav-link <?php echo $activeTab === 'treatments' ? 'active' : ''; ?>" id="treatments-tab" data-bs-toggle="tab" data-bs-target="#treatments" type="button" role="tab">
                 <i class="fas fa-user-nurse me-2"></i>Treatments
@@ -538,9 +562,11 @@ $treatments = $stmt->get_result();
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Medical Reports</h5>
+                    <?php if (canEditReports() && !hasRole(['receptionist', 'nurse'])): ?>
                     <a href="add_report.php?patient_id=<?php echo $patient_id; ?>" class="btn btn-sm btn-primary">
                         <i class="fas fa-plus me-1"></i>Add Report
                     </a>
+                    <?php endif; ?>
                 </div>
                 <div class="card-body">
                     <?php if ($reports->num_rows > 0): ?>
@@ -579,6 +605,7 @@ $treatments = $stmt->get_result();
             </div>
         </div>
 
+        <?php if ($canAccessPrescriptions): ?>
         <!-- Prescriptions Tab -->
         <div class="tab-pane fade <?php echo $activeTab === 'prescriptions' ? 'show active' : ''; ?>" id="prescriptions" role="tabpanel" aria-labelledby="prescriptions-tab">
             <div class="card">
@@ -626,6 +653,7 @@ $treatments = $stmt->get_result();
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- Treatments Tab -->
         <div class="tab-pane fade <?php echo $activeTab === 'treatments' ? 'show active' : ''; ?>" id="treatments" role="tabpanel" aria-labelledby="treatments-tab">
@@ -653,7 +681,7 @@ $treatments = $stmt->get_result();
                                     <?php while ($treatment = $treatments->fetch_assoc()): ?>
                                         <tr>
                                             <td><?php echo date('M j, Y', strtotime($treatment['treatment_date'])); ?></td>
-                                            <td><?php echo sanitize($treatment['treatment_type']); ?></td>
+                                            <td><?php echo sanitize($treatment['treatment_type'] ?? $treatment['treatment'] ?? 'N/A'); ?></td>
                                             <td><?php echo !empty($treatment['nurse_name']) ? sanitize($treatment['nurse_name']) : 'N/A'; ?></td>
                                             <td><?php echo !empty($treatment['notes']) ? substr(sanitize($treatment['notes']), 0, 50) . '...' : 'N/A'; ?></td>
                                             <td>

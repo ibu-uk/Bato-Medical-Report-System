@@ -18,12 +18,14 @@
             </li>
             <?php endif; ?>
 
+            <?php if (!hasRole(['receptionist', 'nurse'])): ?>
             <li class="nav-item">
                 <a href="index.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : ''; ?>">
                     <i class="fas fa-file-circle-plus"></i>
                     <span>Create Report</span>
                 </a>
             </li>
+            <?php endif; ?>
             
             <li class="nav-item">
                 <a href="reports.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'reports.php' ? 'active' : ''; ?>">
@@ -32,12 +34,14 @@
                 </a>
             </li>
 
+            <?php if (!hasRole(['receptionist', 'nurse'])): ?>
             <li class="nav-item">
                 <a href="prescriptions.php" class="nav-link <?php echo (basename($_SERVER['PHP_SELF']) == 'prescriptions.php' || basename($_SERVER['PHP_SELF']) == 'add_prescription.php') ? 'active' : ''; ?>">
                     <i class="fas fa-prescription"></i>
                     <span>Prescriptions</span>
                 </a>
             </li>
+            <?php endif; ?>
 
             <li class="nav-item">
                 <a href="nurse_treatments.php" class="nav-link <?php echo (basename($_SERVER['PHP_SELF']) == 'nurse_treatments.php' || basename($_SERVER['PHP_SELF']) == 'add_nurse_treatment.php') ? 'active' : ''; ?>">
@@ -46,6 +50,7 @@
                 </a>
             </li>
 
+            <?php if (!hasRole(['nurse'])): ?>
             <li class="nav-item">
                 <a href="#" class="nav-link has-submenu" data-bs-toggle="collapse" data-bs-target="#patientsSubmenu">
                     <i class="fas fa-users"></i>
@@ -60,6 +65,7 @@
                     <?php endif; ?>
                 </ul>
             </li>
+            <?php endif; ?>
 
             <?php if (hasRole(['admin'])): ?>
             <li class="nav-item">

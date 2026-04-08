@@ -33,6 +33,7 @@ function hasRole($roles) {
 function canEditReports() {
     return isLoggedIn() && (
         (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'doctor') ||
         !empty($_SESSION['can_edit_reports'])
     );
 }

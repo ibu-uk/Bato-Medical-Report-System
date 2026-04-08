@@ -21,6 +21,20 @@ require_once 'config/auth.php';
 
 // Require login to access this page
 requireLogin();
+
+// Role-based landing and create-report restrictions
+if (hasRole(['receptionist'])) {
+    header('Location: reports.php');
+    exit;
+}
+if (hasRole(['nurse'])) {
+    header('Location: nurse_treatments.php');
+    exit;
+}
+if (!canEditReports()) {
+    header('Location: reports.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

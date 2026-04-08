@@ -83,10 +83,21 @@ if ($filterDateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateTo))
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
     <style>
         body {
             background-color: #f8f9fa;
             padding: 20px;
+            padding-left: calc(var(--sidebar-width) + 20px);
+        }
+        body.sidebar-collapsed {
+            padding-left: calc(var(--sidebar-collapsed-width) + 20px);
+        }
+        @media (max-width: 768px) {
+            body,
+            body.sidebar-collapsed {
+                padding-left: 20px;
+            }
         }
         .card {
             border: none;
@@ -131,6 +142,28 @@ if ($filterDateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateTo))
         .action-buttons .btn-outline-danger:hover {
             background-color: #dc3545;
             color: white;
+        }
+        .patient-history-btn {
+            background-color: #e9ecef;
+            border-color: #d3d9df;
+            color: #343a40;
+            padding: 0.42rem 0.7rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 3px 8px rgba(108, 117, 125, 0.22);
+        }
+        .patient-history-btn:hover,
+        .patient-history-btn:focus {
+            background-color: #dde2e6;
+            border-color: #c6cdd5;
+            color: #212529;
+        }
+        .patient-history-btn i {
+            font-size: 1.15rem;
+        }
+        .patient-history-btn .doc-mark {
+            margin-left: 0.2rem;
+            font-size: 0.9rem;
+            opacity: 0.95;
         }
         
         /* Table styling */
@@ -208,11 +241,16 @@ if ($filterDateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateTo))
     </style>
 </head>
 <body>
+    <?php include_once 'includes/sidebar.php'; ?>
+
     <div class="container-fluid">
         <div class="row mb-3">
             <div class="col-12">
                 <a href="dashboard.php" class="btn btn-secondary btn-back">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+                <a href="logout.php" class="btn btn-outline-danger float-end">
+                    <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
                 <h2 class="d-inline-block">Nurse Treatments</h2>
             </div>
@@ -325,7 +363,7 @@ if ($filterDateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateTo))
                         $total_pages = ceil($total / $per_page);
 
                         // Main query with LIMIT and OFFSET
-                        $query = "SELECT nt.id, nt.treatment_date, p.name AS patient_name, p.file_number, nt.nurse_name, nt.payment_status,
+                        $query = "SELECT nt.id, nt.patient_id, nt.treatment_date, p.name AS patient_name, p.file_number, nt.nurse_name, nt.payment_status,
                                  CASE 
                                      WHEN DATE(nt.treatment_date) = CURDATE() THEN 0 
                                      ELSE 1 
@@ -357,6 +395,9 @@ if ($filterDateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateTo))
                                 echo "<td class='action-buttons'>
                                         <a href='view_treatment.php?id={$row['id']}' class='btn btn-sm btn-outline-primary me-1' title='View'>
                                             <i class='fas fa-eye'></i>
+                                        </a>
+                                        <a href='view_patient.php?id={$row['patient_id']}&return_to=nurse_treatments.php' class='btn patient-history-btn me-1' title='Patient History & Documents' target='_blank'>
+                                            <i class='fas fa-user'></i><i class='fas fa-file-medical doc-mark'></i>
                                         </a>";
                                         if (canEditTreatments()) {
                                             echo "<a href='edit_nurse_treatment.php?id={$row['id']}' class='btn btn-sm btn-outline-warning me-1' title='Edit'>
@@ -497,6 +538,7 @@ if ($filterDateTo !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $filterDateTo))
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="assets/js/sidebar.js"></script>
     <?php include_once 'includes/support_ticket_widget.php'; ?>
     <script>
         $(document).ready(function() {

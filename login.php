@@ -5,9 +5,26 @@ session_start();
 // Include timezone configuration
 require_once 'config/timezone.php';
 
+function getDefaultLandingPageByRole($role) {
+    if ($role === 'admin') {
+        return 'dashboard.php';
+    }
+    if ($role === 'doctor') {
+        return 'index.php';
+    }
+    if ($role === 'receptionist') {
+        return 'reports.php';
+    }
+    if ($role === 'nurse') {
+        return 'nurse_treatments.php';
+    }
+
+    return 'index.php';
+}
+
 // Check if user is already logged in
 if (isset($_SESSION['user_id'])) {
-    $target = (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ? 'dashboard.php' : 'index.php';
+    $target = getDefaultLandingPageByRole($_SESSION['role'] ?? '');
     header("Location: " . $target);
     exit;
 }
@@ -94,8 +111,8 @@ if (password_verify($password, $user['password'])) {
                         $logStmt->execute();
                         $logStmt->close();
                         
-                        // Redirect to dashboard
-                        $target = ($user['role'] === 'admin') ? 'dashboard.php' : 'index.php';
+                        // Redirect to role-based landing page
+                        $target = getDefaultLandingPageByRole((string)$user['role']);
                         header("Location: " . $target);
                         exit;
                     } else {
