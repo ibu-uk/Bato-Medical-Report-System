@@ -47,11 +47,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $conn->real_escape_string(trim($_POST['name'] ?? ''));
     $civil_id = $conn->real_escape_string(trim($_POST['civil_id'] ?? ''));
     $mobile = $conn->real_escape_string(trim($_POST['mobile'] ?? ''));
+    $email = $conn->real_escape_string(trim($_POST['email'] ?? ''));
     $file_number = $conn->real_escape_string(trim($_POST['file_number'] ?? ''));
+    $portal_username = $conn->real_escape_string(trim($_POST['portal_username'] ?? ''));
+    $portal_password = $_POST['portal_password'] ?? '';
+    $portal_is_active = isset($_POST['portal_is_active']) ? 1 : 0;
     
     // Validate required fields
-    if (empty($name) || empty($civil_id) || empty($mobile) || empty($file_number)) {
+    if (empty($name) || empty($civil_id) || empty($mobile) || empty($email) || empty($file_number)) {
         $message = 'All fields are required.';
+        $messageType = 'error';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $message = 'Please enter a valid email address.';
+        $messageType = 'error';
+    } elseif (!empty($portal_password) && empty($portal_username)) {
+        $message = 'Portal username is required if portal password is set.';
+        $messageType = 'error';
+    } elseif (!empty($portal_username) && empty($portal_password) && empty($patient['portal_password_hash'])) {
+        $message = 'Portal password is required when enabling patient login for the first time.';
         $messageType = 'error';
     } else {
         try {
@@ -65,14 +78,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($checkResult->num_rows > 0) {
                 throw new Exception("File number '$file_number' is already in use by another patient.");
             }
+
+            // Check if portal username already exists for another patient
+            if (!empty($portal_username)) {
+                $checkPortalQuery = "SELECT id FROM patients WHERE portal_username = ? AND id != ?";
+                $checkPortalStmt = $conn->prepare($checkPortalQuery);
+                $checkPortalStmt->bind_param('si', $portal_username, $patient_id);
+                $checkPortalStmt->execute();
+                $checkPortalResult = $checkPortalStmt->get_result();
+
+                if ($checkPortalResult->num_rows > 0) {
+                    throw new Exception("Portal username '$portal_username' is already in use by another patient.");
+                }
+            }
+
+            // Portal values
+            $portal_password_hash = null;
+            if (!empty($portal_username)) {
+                if (!empty($portal_password)) {
+                    $portal_password_hash = password_hash($portal_password, PASSWORD_DEFAULT);
+                } else {
+                    $portal_password_hash = $patient['portal_password_hash'] ?? null;
+                }
+            } else {
+                $portal_is_active = 0;
+            }
             
             // Update patient
-            $updateQuery = "UPDATE patients SET name = ?, civil_id = ?, mobile = ?, file_number = ? WHERE id = ?";
+            $updateQuery = "UPDATE patients SET name = ?, civil_id = ?, mobile = ?, email = ?, file_number = ?, portal_username = ?, portal_password_hash = ?, portal_is_active = ? WHERE id = ?";
             $updateStmt = $conn->prepare($updateQuery);
             if ($updateStmt === false) {
                 throw new Exception("Prepare failed: " . $conn->error . " SQL: " . $updateQuery);
             }
-            $updateStmt->bind_param('ssssi', $name, $civil_id, $mobile, $file_number, $patient_id);
+            $updateStmt->bind_param('sssssssii', $name, $civil_id, $mobile, $email, $file_number, $portal_username, $portal_password_hash, $portal_is_active, $patient_id);
             
             if ($updateStmt->execute()) {
                 // Log activity if function exists
@@ -170,20 +208,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label required-field">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" value="<?php echo sanitize_output($patient['email'] ?? ''); ?>" required>
+                            <div class="invalid-feedback">
+                                Please enter a valid email address.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
                             <label for="mobile" class="form-label required-field">Mobile Number</label>
                             <input type="tel" class="form-control" id="mobile" name="mobile" value="<?php echo sanitize_output($patient['mobile']); ?>" required>
                             <div class="invalid-feedback">
                                 Please enter a valid mobile number.
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="file_number" class="form-label required-field">File Number</label>
-                        <input type="text" class="form-control" id="file_number" name="file_number" value="<?php echo sanitize_output($patient['file_number']); ?>" required>
-                        <div class="invalid-feedback">
-                            Please enter patient's file number.
+                        <div class="col-md-6 mb-3">
+                            <label for="file_number" class="form-label required-field">File Number</label>
+                            <input type="text" class="form-control" id="file_number" name="file_number" value="<?php echo sanitize_output($patient['file_number']); ?>" required>
+                            <div class="invalid-feedback">
+                                Please enter patient's file number.
+                            </div>
                         </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="mb-3">Patient Portal Login (Optional)</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="portal_username" class="form-label">Portal Username</label>
+                            <input type="text" class="form-control" id="portal_username" name="portal_username" value="<?php echo sanitize_output($patient['portal_username'] ?? ''); ?>" autocomplete="off">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="portal_password" class="form-label">Reset Portal Password</label>
+                            <input type="password" class="form-control" id="portal_password" name="portal_password" autocomplete="new-password">
+                            <small class="text-muted">Leave blank to keep current password.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="portal_is_active" name="portal_is_active" <?php echo !empty($patient['portal_is_active']) ? 'checked' : ''; ?>>
+                        <label class="form-check-label" for="portal_is_active">
+                            Enable portal login for this patient
+                        </label>
                     </div>
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
