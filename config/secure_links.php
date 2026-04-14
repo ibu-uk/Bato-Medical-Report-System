@@ -4,7 +4,7 @@
  * Generates cryptographically secure tokens for patient report access
  */
 
-require_once 'database.php';
+require_once __DIR__ . '/database.php';
 
 /**
  * Generate a secure 64-character token
@@ -192,11 +192,21 @@ function markTokenAsUsed($token) {
  * @return string Complete URL for the report
  */
 function getSecureReportUrl($token) {
-    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    $path = dirname($_SERVER['PHP_SELF']);
-    
-    return $protocol . '://' . $host . $path . '/report.php?token=' . $token;
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $path = dirname($_SERVER['PHP_SELF'] ?? '/');
+    $path = str_replace('\\', '/', $path);
+    $path = rtrim($path, '/');
+
+    $hostOnly = strtolower((string)preg_replace('/:\\d+$/', '', $host));
+    $isLocalHost = in_array($hostOnly, ['localhost', '127.0.0.1', '::1'], true);
+
+    // Force HTTPS for real domains so links are clickable and production-safe.
+    $protocol = 'https';
+    if ($isLocalHost) {
+        $protocol = (isset($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off' && $_SERVER['HTTPS'] !== '') ? 'https' : 'http';
+    }
+
+    return $protocol . '://' . $host . $path . '/report.php?token=' . urlencode((string)$token);
 }
 
 /**

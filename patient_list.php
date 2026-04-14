@@ -275,6 +275,7 @@ $result = $stmt->get_result();
                                     <th>Patient Name</th>
                                     <th>Civil ID</th>
                                     <th>Mobile</th>
+                                    <th>Portal</th>
                                     <th>Reports</th>
                                     <th>Prescriptions</th>
                                     <th>Treatments</th>
@@ -293,6 +294,15 @@ $result = $stmt->get_result();
                                             </td>
                                             <td><?php echo htmlspecialchars($row['civil_id']); ?></td>
                                             <td class="d-none d-md-table-cell"><?php echo !empty($row['mobile']) ? htmlspecialchars($row['mobile']) : 'N/A'; ?></td>
+                                            <td class="text-center">
+                                                <?php if (!empty($row['portal_username']) && !empty($row['portal_is_active'])): ?>
+                                                    <span class="badge bg-success">Active</span>
+                                                <?php elseif (!empty($row['portal_username']) && empty($row['portal_is_active'])): ?>
+                                                    <span class="badge bg-danger">Disabled</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary">Not Set</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td class="text-center">
                                                 <span class="badge bg-info"><?php echo $row['report_count']; ?></span>
                                             </td>
@@ -536,6 +546,7 @@ $result = $stmt->get_result();
                     </div>
                     <div class="patient-details">
                         ${patient.mobile ? `<div><i class="fas fa-phone me-1"></i> ${patient.mobile}</div>` : ''}
+                        <div class="mt-1"><i class="fas fa-user-lock me-1"></i> Portal: ${patient.portalStatus}</div>
                     </div>
                     <div class="patient-stats">
                         <span class="badge bg-info"><i class="fas fa-file-medical me-1"></i> ${patient.reportCount}</span>
@@ -558,10 +569,11 @@ $result = $stmt->get_result();
                         id: $row.data('patient-id'),
                         name: $row.find('td:eq(1) a').text().trim(),
                         fileNumber: $row.find('td:eq(0)').text().trim(),
-                        mobile: $row.find('td:eq(2)').text().trim(),
-                        reportCount: $row.find('td:eq(3) .badge').text().trim(),
-                        prescriptionCount: $row.find('td:eq(4) .badge').text().trim(),
-                        treatmentCount: $row.find('td:eq(5) .badge').text().trim()
+                        mobile: $row.find('td:eq(3)').text().trim(),
+                        portalStatus: $row.find('td:eq(4) .badge').text().trim(),
+                        reportCount: $row.find('td:eq(5) .badge').text().trim(),
+                        prescriptionCount: $row.find('td:eq(6) .badge').text().trim(),
+                        treatmentCount: $row.find('td:eq(7) .badge').text().trim()
                     };
                     $mobileList.append(createMobilePatientCard(patient));
                 });
@@ -604,7 +616,7 @@ $result = $stmt->get_result();
                 info: false,
                 order: [[1, 'asc']],
                 columnDefs: [
-                    { orderable: false, targets: [6] } // Make Actions column not sortable
+                    { orderable: false, targets: [8] } // Make Actions column not sortable
                 ]
             });
             

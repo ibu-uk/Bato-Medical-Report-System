@@ -4,13 +4,35 @@ session_start();
 require_once 'config/timezone.php';
 require_once 'config/database.php';
 require_once 'config/auth.php';
+require_once 'config/secure_links.php';
 require_once 'config/patient_documents.php';
 
-requireLogin();
-if (!canManagePatients()) {
-    http_response_code(403);
-    echo 'Access denied.';
-    exit;
+$isStaff = isLoggedIn() && canManagePatients();
+$isPatientSession = isPatientLoggedIn();
+
+$token = '';
+$tokenPatientId = null;
+if (!$isStaff && !$isPatientSession) {
+    if (isset($_GET['token']) && trim((string)$_GET['token']) !== '') {
+        $token = trim((string)$_GET['token']);
+    } elseif (isset($_GET['t']) && trim((string)$_GET['t']) !== '') {
+        $token = decodeUrlToken(trim((string)$_GET['t']));
+    }
+
+    if ($token === '') {
+        http_response_code(403);
+        echo 'Access denied.';
+        exit;
+    }
+
+    $tokenData = validateReportToken($token);
+    if (!$tokenData) {
+        http_response_code(403);
+        echo 'Invalid or expired token.';
+        exit;
+    }
+
+    $tokenPatientId = (int)($tokenData['patient_id'] ?? 0);
 }
 
 $documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -57,6 +79,24 @@ if (!$document) {
     http_response_code(404);
     echo 'Document not found.';
     exit;
+}
+
+$documentPatientId = (int)($document['patient_id'] ?? 0);
+if (!$isStaff) {
+    if ($isPatientSession) {
+        $sessionPatientId = (int)getCurrentPatientId();
+        if ($sessionPatientId <= 0 || $sessionPatientId !== $documentPatientId) {
+            http_response_code(404);
+            echo 'Document not found.';
+            exit;
+        }
+    } else {
+        if ($tokenPatientId === null || $tokenPatientId <= 0 || $tokenPatientId !== $documentPatientId) {
+            http_response_code(404);
+            echo 'Document not found.';
+            exit;
+        }
+    }
 }
 
 $filePathRelative = (string)($document['file_path'] ?? '');

@@ -6,28 +6,39 @@ session_start();
 
 // Include required files
 require_once 'config/database.php';
+require_once 'config/auth.php';
 require_once 'config/secure_links.php';
+require_once 'config/patient_documents.php';
 
-// Check if token exists (supports both legacy ?token= and shorter ?t= links)
+// Access modes:
+// 1) Logged-in patient session (new patient portal)
+// 2) Secure token link (backward-compatible)
 $token = '';
-if (isset($_GET['token']) && !empty(trim($_GET['token']))) {
-    $token = trim($_GET['token']);
-} elseif (isset($_GET['t']) && !empty(trim($_GET['t']))) {
-    $token = decodeUrlToken(trim($_GET['t']));
+$accessMode = 'session';
+$patientId = null;
+
+if (isPatientLoggedIn()) {
+    $patientId = getCurrentPatientId();
+} else {
+    if (isset($_GET['token']) && !empty(trim($_GET['token']))) {
+        $token = trim($_GET['token']);
+    } elseif (isset($_GET['t']) && !empty(trim($_GET['t']))) {
+        $token = decodeUrlToken(trim($_GET['t']));
+    }
+
+    if (empty($token)) {
+        header('Location: patient_login.php');
+        exit;
+    }
+
+    $patientData = validateReportToken($token);
+    if (!$patientData) {
+        die('Error: Invalid or expired token. Please request a new link.');
+    }
+
+    $patientId = (int)$patientData['patient_id'];
+    $accessMode = 'token';
 }
-
-if (empty($token)) {
-    die('Error: No valid access token provided.');
-}
-
-// Validate the token and get patient ID
-$patientData = validateReportToken($token);
-
-if (!$patientData) {
-    die('Error: Invalid or expired token. Please request a new link.');
-}
-
-$patientId = $patientData['patient_id'];
 
 // Get database connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -51,6 +62,7 @@ if ($result->num_rows === 0) {
     die('Error: Patient not found.');
 }
 $patient = $result->fetch_assoc();
+$hasPortalAccount = !empty($patient['portal_username']) && !empty($patient['portal_password_hash']);
 $stmt->close();
 
 // Get patient's reports
@@ -116,6 +128,36 @@ try {
     // If there's an error (like table doesn't exist), just show no treatments
     $treatments = [];
     error_log("Nurse treatments query error: " . $e->getMessage());
+}
+
+// Get patient's uploaded documents
+$documents = [];
+try {
+    if (ensurePatientDocumentTables($conn)) {
+        $query = "SELECT id, document_title, document_category, file_mime, created_at
+                  FROM patient_documents
+                  WHERE patient_id = ?
+                  ORDER BY created_at DESC, id DESC";
+        $stmt = $conn->prepare($query);
+
+        if ($stmt === false) {
+            throw new Exception("Error preparing patient documents query: " . $conn->error);
+        }
+
+        $stmt->bind_param('i', $patientId);
+        if (!$stmt->execute()) {
+            throw new Exception("Error executing patient documents query: " . $stmt->error);
+        }
+
+        $documentsResult = $stmt->get_result();
+        while ($row = $documentsResult->fetch_assoc()) {
+            $documents[] = $row;
+        }
+        $stmt->close();
+    }
+} catch (Exception $e) {
+    $documents = [];
+    error_log("Patient documents query error: " . $e->getMessage());
 }
 $conn->close();
 ?>
@@ -419,13 +461,44 @@ $conn->close();
                 <div class="clinic-brand-title"><i class="fas fa-clinic-medical me-2"></i>BATO CLINIC</div>
                 <div class="clinic-brand-subtitle">Official Patient Portal</div>
             </div>
-            <span class="badge text-bg-dark fw-semibold px-3 py-2">Secure Medical Link</span>
+            <span class="badge text-bg-dark fw-semibold px-3 py-2"><?php echo $accessMode === 'session' ? 'Secure Patient Login' : 'Secure Medical Link'; ?></span>
         </div>
 
         <div class="clinic-trust-note">
             <i class="fas fa-shield-alt me-2"></i>
             This secure page belongs to <strong>BATO CLINIC</strong>. Do not share this link with anyone else.
         </div>
+
+        <?php if ($accessMode === 'token'): ?>
+        <div class="alert alert-light border d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+            <div>
+                <strong>Patient Portal Access:</strong>
+                <?php if ($hasPortalAccount): ?>
+                    You already have an account. Please sign in.
+                <?php else: ?>
+                    New patient? Register first using your Civil ID.
+                <?php endif; ?>
+            </div>
+            <div class="d-flex gap-2">
+                <?php if (!$hasPortalAccount): ?>
+                <a href="patient_register.php?token=<?php echo urlencode($token); ?>" class="btn btn-sm btn-primary">
+                    <i class="fas fa-user-plus me-1"></i> Register
+                </a>
+                <?php endif; ?>
+                <a href="patient_login.php?token=<?php echo urlencode($token); ?>" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-sign-in-alt me-1"></i> Sign In
+                </a>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($accessMode === 'session'): ?>
+        <div class="mb-3">
+            <a href="patient_logout.php" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-sign-out-alt me-1"></i> Logout
+            </a>
+        </div>
+        <?php endif; ?>
 
         <!-- Patient Information Card -->
         <div class="row mb-4">
@@ -511,6 +584,55 @@ $conn->close();
 
         <!-- Documents Section -->
         <div class="row g-4">
+            <!-- Documents -->
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card document-card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="me-2" style="width: 36px; height: 36px; background: rgba(108, 117, 125, 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-folder-open" style="color: #6c757d;"></i>
+                            </div>
+                            <span>Documents</span>
+                        </div>
+                        <span class="badge-count" style="background: #6c757d;"><?php echo count($documents); ?></span>
+                    </div>
+                    <div class="document-list p-3">
+                        <?php if (!empty($documents)): ?>
+                            <?php foreach ($documents as $document): ?>
+                                <?php
+                                $docUrl = 'patient_document_download.php?id=' . (int)$document['id'] . '&mode=inline';
+                                if ($accessMode === 'token') {
+                                    $docUrl .= '&token=' . urlencode($token);
+                                }
+                                $docTypeLabel = (strpos((string)($document['file_mime'] ?? ''), 'image/') === 0) ? 'Image' : 'PDF';
+                                ?>
+                                <a href="<?php echo $docUrl; ?>"
+                                   class="text-decoration-none text-dark document-item" target="_blank">
+                                    <div class="d-flex align-items-center">
+                                        <div class="document-icon" style="background: rgba(108, 117, 125, 0.12); color: #6c757d;">
+                                            <i class="fas fa-file"></i>
+                                        </div>
+                                        <div class="document-info">
+                                            <div class="fw-medium"><?php echo htmlspecialchars($document['document_title'] ?? 'Patient Document'); ?></div>
+                                            <div class="document-date">
+                                                <?php echo date('M d, Y', strtotime($document['created_at'])); ?>
+                                                <span class="ms-2">• <?php echo htmlspecialchars($docTypeLabel); ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-muted"></i>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="empty-message">
+                                <i class="fas fa-inbox display-4 text-muted mb-2"></i>
+                                <p class="mb-0">No documents found</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
             <!-- Medical Reports -->
             <div class="col-12 col-md-6 col-lg-4">
                 <div class="card document-card h-100">
@@ -527,7 +649,9 @@ $conn->close();
                         <?php if (!empty($reports)): ?>
                             <?php foreach ($reports as $report): ?>
                                 <?php $docParam = base64_encode($report['id'] . '_' . $patientId); ?>
-                                <a href="view_report.php?token=<?php echo urlencode($token); ?>&doc=<?php echo urlencode($docParam); ?>" 
+                                <a href="<?php echo $accessMode === 'token'
+                                    ? ('view_report.php?token=' . urlencode($token) . '&doc=' . urlencode($docParam))
+                                    : ('view_report.php?id=' . (int)$report['id']); ?>" 
                                    class="text-decoration-none text-dark document-item" target="_blank">
                                     <div class="d-flex align-items-center">
                                         <div class="document-icon">
@@ -567,7 +691,9 @@ $conn->close();
                         <?php if (!empty($prescriptions)): ?>
                             <?php foreach ($prescriptions as $prescription): ?>
                                 <?php $docParam = base64_encode($prescription['id'] . '_' . $patientId); ?>
-                                <a href="view_prescription.php?token=<?php echo urlencode($token); ?>&doc=<?php echo urlencode($docParam); ?>" 
+                                <a href="<?php echo $accessMode === 'token'
+                                    ? ('view_prescription.php?token=' . urlencode($token) . '&doc=' . urlencode($docParam))
+                                    : ('view_prescription.php?id=' . (int)$prescription['id']); ?>" 
                                    class="text-decoration-none text-dark document-item" target="_blank">
                                     <div class="d-flex align-items-center">
                                         <div class="document-icon" style="background: rgba(40, 167, 69, 0.1); color: #28a745;">
@@ -607,7 +733,9 @@ $conn->close();
                         <?php if (!empty($treatments)): ?>
                             <?php foreach ($treatments as $treatment): ?>
                                 <?php $docParam = base64_encode($treatment['id'] . '_' . $patientId); ?>
-                                <a href="view_nurse_treatment.php?token=<?php echo urlencode($token); ?>&doc=<?php echo urlencode($docParam); ?>" 
+                                <a href="<?php echo $accessMode === 'token'
+                                    ? ('view_treatment.php?token=' . urlencode($token) . '&doc=' . urlencode($docParam))
+                                    : ('view_treatment.php?id=' . (int)$treatment['id']); ?>" 
                                    class="text-decoration-none text-dark document-item" target="_blank">
                                     <div class="d-flex align-items-center">
                                         <div class="document-icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;">
@@ -643,7 +771,7 @@ $conn->close();
                 <div class="row">
                     <div class="col-12 text-center">
                         <p class="text-muted mb-0">
-                            <small>© <?php echo date('Y'); ?> Bato Medical Report System. All rights reserved.</small>
+                            <small> <?php echo date('Y'); ?> Bato Medical Report System. All rights reserved.</small>
                         </p>
                         <p class="text-muted mt-2">
                             <small>Secure Patient Portal - Last updated: <?php echo date('M d, Y h:i A'); ?></small>
@@ -654,6 +782,27 @@ $conn->close();
         </footer>
     </div>
 
+    <?php if ($accessMode === 'token' && $hasPortalAccount): ?>
+    <div class="modal fade" id="existingAccountModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-user-check me-2 text-success"></i>Account Already Created</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    This patient already has a portal account. Please sign in using your username and password.
+                </div>
+                <div class="modal-footer">
+                    <a href="patient_login.php?token=<?php echo urlencode($token); ?>" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt me-1"></i> Go to Sign In
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -661,6 +810,13 @@ $conn->close();
         // Add any necessary JavaScript here
         document.addEventListener('DOMContentLoaded', function() {
             // Add any initialization code here
+            <?php if ($accessMode === 'token' && $hasPortalAccount): ?>
+            var existingAccountModalEl = document.getElementById('existingAccountModal');
+            if (existingAccountModalEl) {
+                var existingAccountModal = new bootstrap.Modal(existingAccountModalEl);
+                existingAccountModal.show();
+            }
+            <?php endif; ?>
         });
     </script>
 </body>

@@ -21,6 +21,7 @@ $reportId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 // Check if user is logged in as staff (admin/doctor/nurse/receptionist)
 $isStaff = isset($_SESSION['user_id']) && hasRole(['admin', 'doctor', 'nurse', 'receptionist']);
+$isPatientSession = isPatientLoggedIn();
 
 // This will hold the patient ID when access is via token (patients)
 $patientId = null;
@@ -28,6 +29,9 @@ $patientId = null;
 if ($isStaff && $reportId > 0) {
     // Staff access: open directly by report ID, no token/doc required
     // $patientId stays null; we won't restrict by patient in the query
+} elseif ($isPatientSession && $reportId > 0) {
+    // Patient portal session access: open by report ID and restrict by logged-in patient
+    $patientId = getCurrentPatientId();
 } elseif (!empty($token) && !empty($doc)) {
     // Patient access: validate token and doc
     $tokenData = validateReportToken($token);
@@ -274,6 +278,10 @@ function sanitizeFilename($string) {
                 <?php if ($isStaff && empty($token)): ?>
                     <a href="reports.php" class="btn btn-secondary me-2">
                         <i class="fas fa-arrow-left"></i> Back to Reports
+                    </a>
+                <?php elseif ($isPatientSession): ?>
+                    <a href="patient_dashboard.php" class="btn btn-secondary me-2">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
                     </a>
                 <?php endif; ?>
 

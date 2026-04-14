@@ -8,6 +8,30 @@ function isLoggedIn() {
     return isset($_SESSION['user_id']);
 }
 
+// Function to check if a patient is logged in via patient portal
+function isPatientLoggedIn() {
+    return isset($_SESSION['patient_id']) && (
+        !isset($_SESSION['auth_type']) || $_SESSION['auth_type'] === 'patient'
+    );
+}
+
+// Require patient portal login
+function requirePatientLogin() {
+    if (!isPatientLoggedIn()) {
+        header("Location: patient_login.php");
+        exit;
+    }
+}
+
+// Get current patient ID from session
+function getCurrentPatientId() {
+    if (!isPatientLoggedIn()) {
+        return null;
+    }
+
+    return (int)$_SESSION['patient_id'];
+}
+
 // Function to require login
 function requireLogin() {
     if (!isLoggedIn()) {
