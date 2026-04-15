@@ -103,59 +103,92 @@ $showPrescriptions = ($filterType === 'all' || $filterType === 'prescriptions');
 $showTreatments = ($filterType === 'all' || $filterType === 'treatments');
 
 $countSingle = static function(mysqli $conn, string $sql, string $types, array $params = []): int {
-    $stmt = $conn->prepare($sql);
-    if ($stmt === false) {
-        return 0;
-    }
-
-    if ($types !== '' && !empty($params)) {
-        $bindParams = [$types];
-        foreach ($params as $k => $value) {
-            $bindParams[] = &$params[$k];
+    try {
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return 0;
         }
-        call_user_func_array([$stmt, 'bind_param'], $bindParams);
-    }
 
-    if (!$stmt->execute()) {
+        if ($types !== '' && !empty($params)) {
+            $bindParams = [$types];
+            foreach ($params as $k => $value) {
+                $bindParams[] = &$params[$k];
+            }
+            call_user_func_array([$stmt, 'bind_param'], $bindParams);
+        }
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return 0;
+        }
+
+        $result = $stmt->get_result();
+        $row = $result ? $result->fetch_assoc() : null;
         $stmt->close();
+        return $row ? (int)$row['total'] : 0;
+    } catch (Throwable $e) {
+        error_log('Dashboard count query error: ' . $e->getMessage());
         return 0;
     }
-
-    $result = $stmt->get_result();
-    $row = $result ? $result->fetch_assoc() : null;
-    $stmt->close();
-    return $row ? (int)$row['total'] : 0;
 };
 
 $fetchRows = static function(mysqli $conn, string $sql, string $types, array $params = []): array {
-    $stmt = $conn->prepare($sql);
-    if ($stmt === false) {
-        return [];
-    }
-
-    if ($types !== '' && !empty($params)) {
-        $bindParams = [$types];
-        foreach ($params as $k => $value) {
-            $bindParams[] = &$params[$k];
+    try {
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return [];
         }
-        call_user_func_array([$stmt, 'bind_param'], $bindParams);
-    }
 
-    if (!$stmt->execute()) {
+        if ($types !== '' && !empty($params)) {
+            $bindParams = [$types];
+            foreach ($params as $k => $value) {
+                $bindParams[] = &$params[$k];
+            }
+            call_user_func_array([$stmt, 'bind_param'], $bindParams);
+        }
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        $rows = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $rows[] = $row;
+            }
+        }
         $stmt->close();
+        return $rows;
+    } catch (Throwable $e) {
+        error_log('Dashboard fetch query error: ' . $e->getMessage());
         return [];
     }
-
-    $result = $stmt->get_result();
-    $rows = [];
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-    }
-    $stmt->close();
-    return $rows;
 };
+
+$tableHasColumn = static function(mysqli $conn, string $table, string $column): bool {
+    try {
+        $safeTable = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+        $stmt = $conn->prepare("SHOW COLUMNS FROM `{$safeTable}` LIKE ?");
+        if ($stmt === false) {
+            return false;
+        }
+        $stmt->bind_param('s', $column);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $exists = $result && $result->num_rows > 0;
+        $stmt->close();
+        return $exists;
+    } catch (Throwable $e) {
+        error_log('Dashboard schema check error: ' . $e->getMessage());
+        return false;
+    }
+};
+
+$reportSearchColumn = $tableHasColumn($conn, 'reports', 'report_title') ? 'report_title' : 'generated_by';
+$prescriptionSearchColumn = $tableHasColumn($conn, 'prescriptions', 'prescription_title') ? 'prescription_title' : 'consultation_report';
+$treatmentTypeColumn = $tableHasColumn($conn, 'nurse_treatments', 'treatment_type') ? 'treatment_type' : 'treatment';
 
 // Unfiltered totals for dashboard overview cards
 $totalReports = $countSingle(
@@ -216,7 +249,7 @@ if ($showReports) {
          WHERE patient_id = ?
            AND (? = '' OR report_date >= ?)
            AND (? = '' OR report_date <= ?)
-           AND (? = '' OR report_title LIKE CONCAT('%', ?, '%'))",
+           AND (? = '' OR {$reportSearchColumn} LIKE CONCAT('%', ?, '%'))",
         'issssss',
         [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery]
     );
@@ -232,7 +265,7 @@ if ($showReports) {
          WHERE patient_id = ?
            AND (? = '' OR report_date >= ?)
            AND (? = '' OR report_date <= ?)
-           AND (? = '' OR report_title LIKE CONCAT('%', ?, '%'))
+           AND (? = '' OR {$reportSearchColumn} LIKE CONCAT('%', ?, '%'))
          ORDER BY report_date DESC
          LIMIT ? OFFSET ?",
         'issssssii',
@@ -250,7 +283,7 @@ if ($showPrescriptions) {
          WHERE patient_id = ?
            AND (? = '' OR prescription_date >= ?)
            AND (? = '' OR prescription_date <= ?)
-           AND (? = '' OR prescription_title LIKE CONCAT('%', ?, '%'))",
+           AND (? = '' OR {$prescriptionSearchColumn} LIKE CONCAT('%', ?, '%'))",
         'issssss',
         [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery]
     );
@@ -266,7 +299,7 @@ if ($showPrescriptions) {
          WHERE patient_id = ?
            AND (? = '' OR prescription_date >= ?)
            AND (? = '' OR prescription_date <= ?)
-           AND (? = '' OR prescription_title LIKE CONCAT('%', ?, '%'))
+           AND (? = '' OR {$prescriptionSearchColumn} LIKE CONCAT('%', ?, '%'))
          ORDER BY prescription_date DESC
          LIMIT ? OFFSET ?",
         'issssssii',
@@ -285,7 +318,7 @@ if ($showTreatments) {
              WHERE patient_id = ?
                AND (? = '' OR treatment_date >= ?)
                AND (? = '' OR treatment_date <= ?)
-               AND (? = '' OR treatment_type LIKE CONCAT('%', ?, '%') OR nurse_name LIKE CONCAT('%', ?, '%'))",
+               AND (? = '' OR {$treatmentTypeColumn} LIKE CONCAT('%', ?, '%') OR nurse_name LIKE CONCAT('%', ?, '%'))",
             'isssssss',
             [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery, $searchQuery]
         );
@@ -301,7 +334,7 @@ if ($showTreatments) {
              WHERE patient_id = ?
                AND (? = '' OR treatment_date >= ?)
                AND (? = '' OR treatment_date <= ?)
-               AND (? = '' OR treatment_type LIKE CONCAT('%', ?, '%') OR nurse_name LIKE CONCAT('%', ?, '%'))
+               AND (? = '' OR {$treatmentTypeColumn} LIKE CONCAT('%', ?, '%') OR nurse_name LIKE CONCAT('%', ?, '%'))
              ORDER BY treatment_date DESC
              LIMIT ? OFFSET ?",
             'isssssssii',
