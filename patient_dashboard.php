@@ -65,100 +65,392 @@ $patient = $result->fetch_assoc();
 $hasPortalAccount = !empty($patient['portal_username']) && !empty($patient['portal_password_hash']);
 $stmt->close();
 
-// Get patient's reports
-$reports = [];
-$query = "SELECT * FROM reports WHERE patient_id = ? ORDER BY report_date DESC";
-$stmt = $conn->prepare($query);
-if ($stmt === false) {
-    die("Error preparing reports query: " . $conn->error);
+// Dashboard filters and pagination
+$allowedRecordTypes = ['all', 'documents', 'reports', 'prescriptions', 'treatments'];
+$filterType = isset($_GET['record_type']) ? strtolower(trim((string)$_GET['record_type'])) : 'all';
+if (!in_array($filterType, $allowedRecordTypes, true)) {
+    $filterType = 'all';
 }
 
-$stmt->bind_param('i', $patientId);
-if (!$stmt->execute()) {
-    die("Error executing reports query: " . $stmt->error);
+$dateFrom = isset($_GET['date_from']) ? trim((string)$_GET['date_from']) : '';
+$dateTo = isset($_GET['date_to']) ? trim((string)$_GET['date_to']) : '';
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
+    $dateFrom = '';
+}
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+    $dateTo = '';
 }
 
-$reportsResult = $stmt->get_result();
-while ($row = $reportsResult->fetch_assoc()) {
-    $reports[] = $row;
-}
-$stmt->close();
-
-// Get patient's prescriptions
-$prescriptions = [];
-$query = "SELECT * FROM prescriptions WHERE patient_id = ? ORDER BY prescription_date DESC";
-$stmt = $conn->prepare($query);
-if ($stmt === false) {
-    die("Error preparing prescriptions query: " . $conn->error);
+$searchQuery = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
+if (strlen($searchQuery) > 120) {
+    $searchQuery = substr($searchQuery, 0, 120);
 }
 
-$stmt->bind_param('i', $patientId);
-if (!$stmt->execute()) {
-    die("Error executing prescriptions query: " . $stmt->error);
+$perPageOptions = [5, 10, 20];
+$perPage = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
+if (!in_array($perPage, $perPageOptions, true)) {
+    $perPage = 10;
 }
 
-$prescriptionsResult = $stmt->get_result();
-while ($row = $prescriptionsResult->fetch_assoc()) {
-    $prescriptions[] = $row;
-}
-$stmt->close();
+$pageDocuments = max(1, isset($_GET['page_documents']) ? (int)$_GET['page_documents'] : 1);
+$pageReports = max(1, isset($_GET['page_reports']) ? (int)$_GET['page_reports'] : 1);
+$pagePrescriptions = max(1, isset($_GET['page_prescriptions']) ? (int)$_GET['page_prescriptions'] : 1);
+$pageTreatments = max(1, isset($_GET['page_treatments']) ? (int)$_GET['page_treatments'] : 1);
 
-// Get patient's nurse treatments
-$treatments = [];
-try {
-    // Use nurse_treatments table which stores nurse treatment records
-    $query = "SELECT id, treatment_date, nurse_name FROM nurse_treatments WHERE patient_id = ? ORDER BY treatment_date DESC";
-    $stmt = $conn->prepare($query);
+$showDocuments = ($filterType === 'all' || $filterType === 'documents');
+$showReports = ($filterType === 'all' || $filterType === 'reports');
+$showPrescriptions = ($filterType === 'all' || $filterType === 'prescriptions');
+$showTreatments = ($filterType === 'all' || $filterType === 'treatments');
 
+$countSingle = static function(mysqli $conn, string $sql, string $types, array $params = []): int {
+    $stmt = $conn->prepare($sql);
     if ($stmt === false) {
-        throw new Exception("Error preparing nurse treatments query: " . $conn->error);
+        return 0;
     }
 
-    $stmt->bind_param('i', $patientId);
+    if ($types !== '' && !empty($params)) {
+        $bindParams = [$types];
+        foreach ($params as $k => $value) {
+            $bindParams[] = &$params[$k];
+        }
+        call_user_func_array([$stmt, 'bind_param'], $bindParams);
+    }
+
     if (!$stmt->execute()) {
-        throw new Exception("Error executing nurse treatments query: " . $stmt->error);
+        $stmt->close();
+        return 0;
     }
 
-    $treatmentsResult = $stmt->get_result();
-    while ($row = $treatmentsResult->fetch_assoc()) {
-        $treatments[] = $row;
+    $result = $stmt->get_result();
+    $row = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+    return $row ? (int)$row['total'] : 0;
+};
+
+$fetchRows = static function(mysqli $conn, string $sql, string $types, array $params = []): array {
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        return [];
+    }
+
+    if ($types !== '' && !empty($params)) {
+        $bindParams = [$types];
+        foreach ($params as $k => $value) {
+            $bindParams[] = &$params[$k];
+        }
+        call_user_func_array([$stmt, 'bind_param'], $bindParams);
+    }
+
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return [];
+    }
+
+    $result = $stmt->get_result();
+    $rows = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = $row;
+        }
     }
     $stmt->close();
-} catch (Exception $e) {
-    // If there's an error (like table doesn't exist), just show no treatments
-    $treatments = [];
-    error_log("Nurse treatments query error: " . $e->getMessage());
-}
+    return $rows;
+};
 
-// Get patient's uploaded documents
-$documents = [];
+// Unfiltered totals for dashboard overview cards
+$totalReports = $countSingle(
+    $conn,
+    "SELECT COUNT(*) AS total FROM reports WHERE patient_id = ?",
+    'i',
+    [$patientId]
+);
+$totalPrescriptions = $countSingle(
+    $conn,
+    "SELECT COUNT(*) AS total FROM prescriptions WHERE patient_id = ?",
+    'i',
+    [$patientId]
+);
+$totalTreatments = $countSingle(
+    $conn,
+    "SELECT COUNT(*) AS total FROM nurse_treatments WHERE patient_id = ?",
+    'i',
+    [$patientId]
+);
+
+$totalDocuments = 0;
+$documentsTableReady = false;
 try {
-    if (ensurePatientDocumentTables($conn)) {
-        $query = "SELECT id, document_title, document_category, file_mime, created_at
-                  FROM patient_documents
-                  WHERE patient_id = ?
-                  ORDER BY created_at DESC, id DESC";
-        $stmt = $conn->prepare($query);
-
-        if ($stmt === false) {
-            throw new Exception("Error preparing patient documents query: " . $conn->error);
-        }
-
-        $stmt->bind_param('i', $patientId);
-        if (!$stmt->execute()) {
-            throw new Exception("Error executing patient documents query: " . $stmt->error);
-        }
-
-        $documentsResult = $stmt->get_result();
-        while ($row = $documentsResult->fetch_assoc()) {
-            $documents[] = $row;
-        }
-        $stmt->close();
+    $documentsTableReady = ensurePatientDocumentTables($conn);
+    if ($documentsTableReady) {
+        $totalDocuments = $countSingle(
+            $conn,
+            "SELECT COUNT(*) AS total FROM patient_documents WHERE patient_id = ?",
+            'i',
+            [$patientId]
+        );
     }
 } catch (Exception $e) {
-    $documents = [];
-    error_log("Patient documents query error: " . $e->getMessage());
+    $documentsTableReady = false;
+    $totalDocuments = 0;
+    error_log("Patient documents total query error: " . $e->getMessage());
 }
+
+$totalRecords = $totalDocuments + $totalReports + $totalPrescriptions + $totalTreatments;
+
+// Filtered totals and paginated data
+$filteredDocumentsTotal = 0;
+$filteredReportsTotal = 0;
+$filteredPrescriptionsTotal = 0;
+$filteredTreatmentsTotal = 0;
+
+$documents = [];
+$reports = [];
+$prescriptions = [];
+$treatments = [];
+
+if ($showReports) {
+    $filteredReportsTotal = $countSingle(
+        $conn,
+        "SELECT COUNT(*) AS total
+         FROM reports
+         WHERE patient_id = ?
+           AND (? = '' OR report_date >= ?)
+           AND (? = '' OR report_date <= ?)
+           AND (? = '' OR report_title LIKE CONCAT('%', ?, '%'))",
+        'issssss',
+        [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery]
+    );
+
+    $totalPagesReports = max(1, (int)ceil($filteredReportsTotal / $perPage));
+    $pageReports = min($pageReports, $totalPagesReports);
+    $offsetReports = ($pageReports - 1) * $perPage;
+
+    $reports = $fetchRows(
+        $conn,
+        "SELECT *
+         FROM reports
+         WHERE patient_id = ?
+           AND (? = '' OR report_date >= ?)
+           AND (? = '' OR report_date <= ?)
+           AND (? = '' OR report_title LIKE CONCAT('%', ?, '%'))
+         ORDER BY report_date DESC
+         LIMIT ? OFFSET ?",
+        'issssssii',
+        [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery, $perPage, $offsetReports]
+    );
+} else {
+    $totalPagesReports = 1;
+}
+
+if ($showPrescriptions) {
+    $filteredPrescriptionsTotal = $countSingle(
+        $conn,
+        "SELECT COUNT(*) AS total
+         FROM prescriptions
+         WHERE patient_id = ?
+           AND (? = '' OR prescription_date >= ?)
+           AND (? = '' OR prescription_date <= ?)
+           AND (? = '' OR prescription_title LIKE CONCAT('%', ?, '%'))",
+        'issssss',
+        [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery]
+    );
+
+    $totalPagesPrescriptions = max(1, (int)ceil($filteredPrescriptionsTotal / $perPage));
+    $pagePrescriptions = min($pagePrescriptions, $totalPagesPrescriptions);
+    $offsetPrescriptions = ($pagePrescriptions - 1) * $perPage;
+
+    $prescriptions = $fetchRows(
+        $conn,
+        "SELECT *
+         FROM prescriptions
+         WHERE patient_id = ?
+           AND (? = '' OR prescription_date >= ?)
+           AND (? = '' OR prescription_date <= ?)
+           AND (? = '' OR prescription_title LIKE CONCAT('%', ?, '%'))
+         ORDER BY prescription_date DESC
+         LIMIT ? OFFSET ?",
+        'issssssii',
+        [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery, $perPage, $offsetPrescriptions]
+    );
+} else {
+    $totalPagesPrescriptions = 1;
+}
+
+if ($showTreatments) {
+    try {
+        $filteredTreatmentsTotal = $countSingle(
+            $conn,
+            "SELECT COUNT(*) AS total
+             FROM nurse_treatments
+             WHERE patient_id = ?
+               AND (? = '' OR treatment_date >= ?)
+               AND (? = '' OR treatment_date <= ?)
+               AND (? = '' OR treatment_type LIKE CONCAT('%', ?, '%') OR nurse_name LIKE CONCAT('%', ?, '%'))",
+            'isssssss',
+            [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery, $searchQuery]
+        );
+
+        $totalPagesTreatments = max(1, (int)ceil($filteredTreatmentsTotal / $perPage));
+        $pageTreatments = min($pageTreatments, $totalPagesTreatments);
+        $offsetTreatments = ($pageTreatments - 1) * $perPage;
+
+        $treatments = $fetchRows(
+            $conn,
+            "SELECT *
+             FROM nurse_treatments
+             WHERE patient_id = ?
+               AND (? = '' OR treatment_date >= ?)
+               AND (? = '' OR treatment_date <= ?)
+               AND (? = '' OR treatment_type LIKE CONCAT('%', ?, '%') OR nurse_name LIKE CONCAT('%', ?, '%'))
+             ORDER BY treatment_date DESC
+             LIMIT ? OFFSET ?",
+            'isssssssii',
+            [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery, $searchQuery, $perPage, $offsetTreatments]
+        );
+    } catch (Exception $e) {
+        $treatments = [];
+        $filteredTreatmentsTotal = 0;
+        $totalPagesTreatments = 1;
+        error_log("Nurse treatments filtered query error: " . $e->getMessage());
+    }
+} else {
+    $totalPagesTreatments = 1;
+}
+
+if ($showDocuments && $documentsTableReady) {
+    try {
+        $filteredDocumentsTotal = $countSingle(
+            $conn,
+            "SELECT COUNT(*) AS total
+             FROM patient_documents
+             WHERE patient_id = ?
+               AND (? = '' OR DATE(created_at) >= ?)
+               AND (? = '' OR DATE(created_at) <= ?)
+               AND (? = '' OR document_title LIKE CONCAT('%', ?, '%') OR document_category LIKE CONCAT('%', ?, '%'))",
+            'isssssss',
+            [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery, $searchQuery]
+        );
+
+        $totalPagesDocuments = max(1, (int)ceil($filteredDocumentsTotal / $perPage));
+        $pageDocuments = min($pageDocuments, $totalPagesDocuments);
+        $offsetDocuments = ($pageDocuments - 1) * $perPage;
+
+        $documents = $fetchRows(
+            $conn,
+            "SELECT id, document_title, document_category, file_mime, created_at
+             FROM patient_documents
+             WHERE patient_id = ?
+               AND (? = '' OR DATE(created_at) >= ?)
+               AND (? = '' OR DATE(created_at) <= ?)
+               AND (? = '' OR document_title LIKE CONCAT('%', ?, '%') OR document_category LIKE CONCAT('%', ?, '%'))
+             ORDER BY created_at DESC, id DESC
+             LIMIT ? OFFSET ?",
+            'isssssssii',
+            [$patientId, $dateFrom, $dateFrom, $dateTo, $dateTo, $searchQuery, $searchQuery, $searchQuery, $perPage, $offsetDocuments]
+        );
+    } catch (Exception $e) {
+        $documents = [];
+        $filteredDocumentsTotal = 0;
+        $totalPagesDocuments = 1;
+        error_log("Patient documents filtered query error: " . $e->getMessage());
+    }
+} else {
+    $totalPagesDocuments = 1;
+}
+
+$documentsDisplayStart = $filteredDocumentsTotal > 0 ? (($pageDocuments - 1) * $perPage) + 1 : 0;
+$documentsDisplayEnd = $filteredDocumentsTotal > 0 ? min($filteredDocumentsTotal, $pageDocuments * $perPage) : 0;
+$reportsDisplayStart = $filteredReportsTotal > 0 ? (($pageReports - 1) * $perPage) + 1 : 0;
+$reportsDisplayEnd = $filteredReportsTotal > 0 ? min($filteredReportsTotal, $pageReports * $perPage) : 0;
+$prescriptionsDisplayStart = $filteredPrescriptionsTotal > 0 ? (($pagePrescriptions - 1) * $perPage) + 1 : 0;
+$prescriptionsDisplayEnd = $filteredPrescriptionsTotal > 0 ? min($filteredPrescriptionsTotal, $pagePrescriptions * $perPage) : 0;
+$treatmentsDisplayStart = $filteredTreatmentsTotal > 0 ? (($pageTreatments - 1) * $perPage) + 1 : 0;
+$treatmentsDisplayEnd = $filteredTreatmentsTotal > 0 ? min($filteredTreatmentsTotal, $pageTreatments * $perPage) : 0;
+
+$buildDashboardUrl = static function(array $overrides = []) use (
+    $accessMode,
+    $token,
+    $filterType,
+    $dateFrom,
+    $dateTo,
+    $searchQuery,
+    $perPage,
+    $pageDocuments,
+    $pageReports,
+    $pagePrescriptions,
+    $pageTreatments
+): string {
+    $params = [
+        'record_type' => $filterType,
+        'date_from' => $dateFrom,
+        'date_to' => $dateTo,
+        'q' => $searchQuery,
+        'per_page' => $perPage,
+        'page_documents' => $pageDocuments,
+        'page_reports' => $pageReports,
+        'page_prescriptions' => $pagePrescriptions,
+        'page_treatments' => $pageTreatments,
+    ];
+
+    if ($accessMode === 'token') {
+        $params['token'] = $token;
+    }
+
+    foreach ($overrides as $key => $value) {
+        if ($value === null || $value === '') {
+            unset($params[$key]);
+        } else {
+            $params[$key] = $value;
+        }
+    }
+
+    return 'patient_dashboard.php?' . http_build_query($params);
+};
+
+$renderPagination = static function(int $currentPage, int $totalPages, string $pageParam) use ($buildDashboardUrl): string {
+    if ($totalPages <= 1) {
+        return '';
+    }
+
+    $start = max(1, $currentPage - 1);
+    $end = min($totalPages, $currentPage + 1);
+
+    $html = '<nav aria-label="Section pagination"><ul class="pagination pagination-sm mb-0">';
+
+    $prevDisabled = $currentPage <= 1 ? ' disabled' : '';
+    $prevUrl = htmlspecialchars($buildDashboardUrl([$pageParam => max(1, $currentPage - 1)]));
+    $html .= '<li class="page-item' . $prevDisabled . '"><a class="page-link" href="' . $prevUrl . '">&laquo;</a></li>';
+
+    for ($i = $start; $i <= $end; $i++) {
+        $active = $i === $currentPage ? ' active' : '';
+        $url = htmlspecialchars($buildDashboardUrl([$pageParam => $i]));
+        $html .= '<li class="page-item' . $active . '"><a class="page-link" href="' . $url . '">' . $i . '</a></li>';
+    }
+
+    $nextDisabled = $currentPage >= $totalPages ? ' disabled' : '';
+    $nextUrl = htmlspecialchars($buildDashboardUrl([$pageParam => min($totalPages, $currentPage + 1)]));
+    $html .= '<li class="page-item' . $nextDisabled . '"><a class="page-link" href="' . $nextUrl . '">&raquo;</a></li>';
+
+    $html .= '</ul></nav>';
+    return $html;
+};
+
+$resetFilterUrl = $buildDashboardUrl([
+    'record_type' => 'all',
+    'date_from' => null,
+    'date_to' => null,
+    'q' => null,
+    'page_documents' => 1,
+    'page_reports' => 1,
+    'page_prescriptions' => 1,
+    'page_treatments' => 1,
+]);
+
+$documentsColClass = $filterType === 'all' ? 'col-12 col-md-6 col-lg-4' : 'col-12';
+$reportsColClass = $filterType === 'all' ? 'col-12 col-md-6 col-lg-4' : 'col-12';
+$prescriptionsColClass = $filterType === 'all' ? 'col-12 col-md-6 col-lg-4' : 'col-12';
+$treatmentsColClass = $filterType === 'all' ? 'col-12 col-md-6 col-lg-4' : 'col-12';
+
 $conn->close();
 ?>
 <!DOCTYPE html>
@@ -172,111 +464,267 @@ $conn->close();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
         :root {
-            --primary-color: #0d6efd;
-            --secondary-color: #6c757d;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
+            --primary-color: #0f766e;
+            --secondary-color: #526070;
+            --light-color: #f3f7f9;
+            --dark-color: #1f2937;
             --border-radius: 12px;
-            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s ease;
+            --box-shadow: 0 3px 10px rgba(31, 41, 51, 0.08);
+            --transition: all 0.25s ease;
         }
-        
+
         body {
-            background-color: #f5f7fa;
+            background-color: #edf3f6;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            color: #333;
+            color: #253142;
             line-height: 1.6;
-            padding: 15px;
-            overflow-x: hidden; /* prevent accidental horizontal scroll on mobiles */
+            font-size: 1.03rem;
+            padding: 18px;
+            overflow-x: hidden;
         }
-        
+
         .card {
             border: none;
             border-radius: var(--border-radius);
             box-shadow: var(--box-shadow);
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             transition: var(--transition);
             overflow: hidden;
-            background: white;
+            background: #fff;
         }
-        
+
         .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(31, 41, 51, 0.1);
         }
-        
+
         .card-header {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border: none;
-            font-weight: 600;
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+            background: linear-gradient(135deg, #f8fcfd 0%, #edf6f8 100%);
+            border-bottom: 1px solid #d7e7ea;
             color: var(--dark-color);
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 0.95rem 1.15rem;
         }
-        
+
         .card-body {
-            padding: 1.25rem;
+            padding: 1.1rem;
         }
-        
-        .patient-info-card {
-            margin-bottom: 30px;
-            border-left: 4px solid var(--primary-color);
+
+        .clinic-brand-banner {
+            background: linear-gradient(135deg, #f7fcfc 0%, #eaf5f5 100%);
+            color: #1f2933;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            border: 1px solid #cfe3e6;
         }
-        
-        .info-item {
-            margin-bottom: 12px;
-            padding: 10px 15px;
-            background: rgba(13, 110, 253, 0.05);
-            border-radius: 8px;
+
+        .clinic-brand-title {
+            font-size: 1.22rem;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+
+        .clinic-brand-subtitle {
+            font-size: 0.98rem;
+            color: #4f6672;
+            margin-top: 2px;
+        }
+
+        .clinic-trust-note {
+            background: #f8fcfd;
+            color: #375261;
+            border: 1px solid #cfe3e6;
+            border-radius: 10px;
+            padding: 12px 15px;
+            font-size: 0.96rem;
+            margin-bottom: 18px;
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .section-heading h6 {
+            margin: 0;
+            font-weight: 700;
+            color: #1f2d3d;
+            letter-spacing: 0.2px;
+            font-size: 1.08rem;
+        }
+
+        .section-heading small {
+            color: #526070;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .summary-card {
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid #d7e7ea;
+            background: #ffffff;
+            box-shadow: 0 2px 6px rgba(31, 41, 51, 0.06);
+            height: 100%;
             transition: var(--transition);
         }
-        
-        .info-item:hover {
-            background: rgba(13, 110, 253, 0.1);
-            transform: translateX(5px);
+
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 18px rgba(31, 41, 51, 0.1);
         }
-        
-        .info-item i {
-            width: 24px;
-            text-align: center;
+
+        .summary-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             margin-right: 10px;
+            font-size: 1rem;
+        }
+
+        .summary-title {
+            font-size: 0.93rem;
+            color: #4f6171;
+            margin-bottom: 2px;
+        }
+
+        .summary-value {
+            font-size: 1.62rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #1e293b;
+        }
+
+        .patient-info-card {
+            margin-bottom: 18px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .patient-profile-strip {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(15, 118, 110, 0.08) 0%, rgba(15, 118, 110, 0.03) 100%);
+            border: 1px solid rgba(15, 118, 110, 0.16);
+            margin-bottom: 12px;
+        }
+
+        .patient-avatar {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: rgba(15, 118, 110, 0.13);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            font-size: 1.35rem;
+            flex-shrink: 0;
+        }
+
+        .patient-name {
+            margin: 0;
+            font-size: 1.26rem;
+            font-weight: 700;
+            color: #162333;
+            line-height: 1.2;
+        }
+
+        .patient-meta {
+            margin-top: 4px;
+            color: #4d6172;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .info-item {
+            margin-bottom: 0;
+            padding: 11px 12px;
+            background: #f8fcfd;
+            border: 1px solid #d7e7ea;
+            border-radius: 10px;
+            transition: var(--transition);
+        }
+
+        .info-item:hover {
+            background: #f2f8fa;
+            border-color: #bed7dc;
+            transform: translateY(-1px);
+        }
+
+        .info-item i {
+            width: 22px;
+            text-align: center;
+            margin-right: 8px;
             color: var(--primary-color);
         }
-        
+
+        .info-label {
+            color: #617282;
+            font-size: 0.88rem;
+            font-weight: 600;
+            line-height: 1.1;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            color: #1f2f40;
+            font-size: 1.03rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
         .document-card {
             height: 100%;
             display: flex;
             flex-direction: column;
         }
-        
+
         .document-list {
             flex: 1;
         }
-        
+
         .document-item {
             padding: 12px 15px;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
             transition: var(--transition);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .document-item:last-child {
             border-bottom: none;
         }
-        
+
         .document-item:hover {
-            background: rgba(13, 110, 253, 0.03);
+            background: rgba(15, 118, 110, 0.05);
         }
-        
+
         .document-icon {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: rgba(13, 110, 253, 0.1);
+            background: rgba(15, 118, 110, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -284,173 +732,159 @@ $conn->close();
             color: var(--primary-color);
             font-size: 18px;
         }
-        
+
         .document-info {
             flex: 1;
         }
-        
+
         .document-date {
-            font-size: 0.85rem;
+            font-size: 0.92rem;
             color: var(--secondary-color);
         }
-        
+
         .badge-count {
             background: var(--primary-color);
             color: white;
             border-radius: 20px;
-            padding: 5px 10px;
+            padding: 5px 11px;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
         }
-        
+
         .empty-message {
-            padding: 30px 15px;
+            padding: 28px 15px;
             text-align: center;
             color: var(--secondary-color);
             font-style: italic;
-            background: rgba(0,0,0,0.02);
+            background: rgba(0, 0, 0, 0.02);
             border-radius: 8px;
             margin: 10px;
         }
-        
-        .btn-back {
-            background: white;
-            color: var(--dark-color);
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-weight: 500;
-            transition: var(--transition);
-            margin-bottom: 20px;
-            display: inline-flex;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        
-        .btn-back:hover {
-            background: #f1f3f5;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        
-        .btn-back i {
-            margin-right: 8px;
-        }
-        
-        .clinic-brand-banner {
-            background: #ececec;
-            color: #111;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 14px 18px;
-            margin-bottom: 16px;
-            border: 1px solid #d8d8d8;
-        }
-        
-        .clinic-brand-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            letter-spacing: 0.3px;
-        }
-        
-        .clinic-brand-subtitle {
-            font-size: 0.9rem;
-            color: #555;
-            margin-top: 2px;
-        }
-        
-        .clinic-trust-note {
-            background: #f6f6f6;
-            color: #222;
-            border: 1px solid #dddddd;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 0.9rem;
+
+        .filter-card {
+            border: 1px solid #d7e7ea;
             margin-bottom: 18px;
         }
-        
-        /* Responsive adjustments */
+
+        .filter-card .form-label {
+            font-size: 0.82rem;
+            color: #60707f;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+
+        .records-meta {
+            font-size: 0.84rem;
+            color: #60707f;
+            font-weight: 600;
+        }
+
+        .section-pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px 12px;
+        }
+
+        .pagination .page-link {
+            color: #0f766e;
+            border-color: #d7e7ea;
+        }
+
+        .pagination .page-item.active .page-link {
+            background: #0f766e;
+            border-color: #0f766e;
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 10px;
+                font-size: 1rem;
             }
 
             .card {
                 margin-bottom: 12px;
             }
 
-            .patient-info-card .card-body {
-                padding: 0.75rem 1rem;
+            .clinic-brand-banner {
+                padding: 12px 14px;
             }
 
-            .patient-info-card h4 {
+            .clinic-brand-title {
+                font-size: 1.05rem;
+            }
+
+            .clinic-brand-subtitle {
+                font-size: 0.88rem;
+            }
+
+            .section-heading {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+            }
+
+            .patient-profile-strip {
+                padding: 10px 11px;
+                gap: 10px;
+            }
+
+            .patient-avatar {
+                width: 46px;
+                height: 46px;
                 font-size: 1.15rem;
             }
 
+            .patient-name {
+                font-size: 1.08rem;
+            }
+
+            .patient-meta {
+                font-size: 0.88rem;
+            }
+
             .info-item {
-                padding: 6px 10px;
-                font-size: 0.9rem;
-                margin-bottom: 8px;
+                padding: 9px 10px;
             }
 
-            .info-item i {
-                margin-right: 6px;
+            .summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+                margin-bottom: 18px;
             }
 
-            .document-card .card-header {
-                padding: 0.75rem 1rem;
+            .summary-card {
+                padding: 12px;
             }
 
-            .document-item {
-                padding: 8px 10px;
-            }
-
-            .document-icon {
-                width: 32px;
-                height: 32px;
-                font-size: 15px;
+            .summary-icon {
+                width: 34px;
+                height: 34px;
                 margin-right: 8px;
+                font-size: 0.9rem;
             }
 
-            .badge-count {
-                padding: 3px 8px;
-                font-size: 0.7rem;
+            .summary-title {
+                font-size: 0.8rem;
             }
 
-            .empty-message {
-                padding: 20px 10px;
-                margin: 8px 0;
+            .summary-value {
+                font-size: 1.22rem;
+            }
+
+            .section-pagination {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
-        
-        /* Animation for page load */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .card {
-            animation: fadeIn 0.4s ease-out forwards;
-        }
-        
-        /* Custom scrollbar for webkit browsers */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
+
+        @media (max-width: 450px) {
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -500,101 +934,230 @@ $conn->close();
         </div>
         <?php endif; ?>
 
-        <!-- Patient Information Card -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card patient-info-card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Patient Information</h5>
-                        <span class="badge bg-primary">Patient ID: <?php echo $patientId; ?></span>
+        <div class="section-heading">
+            <h6><i class="fas fa-chart-pie me-2 text-primary"></i>Dashboard Overview</h6>
+            <small>All totals below are from your own patient portal records.</small>
+        </div>
+
+        <!-- Patient Portal Summary Totals -->
+        <div class="summary-grid">
+            <div>
+                <div class="summary-card">
+                    <div class="d-flex align-items-center">
+                        <span class="summary-icon" style="background: rgba(15, 118, 110, 0.14); color: #0f766e;">
+                            <i class="fas fa-layer-group"></i>
+                        </span>
+                        <div>
+                            <div class="summary-title">Total Records</div>
+                            <div class="summary-value"><?php echo $totalRecords; ?></div>
+                        </div>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="p-4">
-                            <div class="text-center mb-4">
-                                <div class="mx-auto" style="width: 100px; height: 100px; background: rgba(13, 110, 253, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
-                                    <i class="fas fa-user-tie" style="font-size: 40px; color: var(--primary-color);"></i>
-                                </div>
-                                <h4 class="mb-1">
-                                    <?php 
-                                        echo !empty($patient['name']) ? htmlspecialchars($patient['name']) : 
-                                             (!empty($patient['first_name']) ? 
-                                                 htmlspecialchars($patient['first_name'] . ' ' . ($patient['last_name'] ?? '')) : 
-                                                 'N/A'); 
-                                    ?>
-                                </h4>
-                                <?php if (!empty($patient['file_number'])): ?>
-                                <p class="text-muted">File #<?php echo htmlspecialchars($patient['file_number']); ?></p>
-                                <?php endif; ?>
-                            </div>
-                            
-                            <div class="row g-3">
-                                <?php if (!empty($patient['civil_id'])): ?>
-                                <div class="col-12">
-                                    <div class="info-item d-flex align-items-center">
-                                        <i class="fas fa-id-card"></i>
-                                        <div>
-                                            <div class="text-muted small">Civil ID</div>
-                                            <div class="fw-medium"><?php echo htmlspecialchars($patient['civil_id']); ?></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-                                
-                                <?php if (!empty($patient['mobile'])): ?>
-                                <div class="col-md-6">
-                                    <div class="info-item d-flex align-items-center">
-                                        <i class="fas fa-mobile-alt"></i>
-                                        <div>
-                                            <div class="text-muted small">Mobile</div>
-                                            <div class="fw-medium"><?php echo htmlspecialchars($patient['mobile']); ?></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-                                
-                                <?php if (!empty($patient['phone'])): ?>
-                                <div class="col-md-6">
-                                    <div class="info-item d-flex align-items-center">
-                                        <i class="fas fa-phone-alt"></i>
-                                        <div>
-                                            <div class="text-muted small">Phone</div>
-                                            <div class="fw-medium"><?php echo htmlspecialchars($patient['phone']); ?></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-                                
-                                <?php if (!empty($patient['email'])): ?>
-                                <div class="col-12">
-                                    <div class="info-item d-flex align-items-center">
-                                        <i class="fas fa-envelope"></i>
-                                        <div class="text-truncate">
-                                            <div class="text-muted small">Email</div>
-                                            <div class="fw-medium text-truncate"><?php echo htmlspecialchars($patient['email']); ?></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-                            </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="summary-card">
+                    <div class="d-flex align-items-center">
+                        <span class="summary-icon" style="background: rgba(71, 85, 105, 0.14); color: #475569;">
+                            <i class="fas fa-folder-open"></i>
+                        </span>
+                        <div>
+                            <div class="summary-title">Documents</div>
+                            <div class="summary-value"><?php echo $totalDocuments; ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="summary-card">
+                    <div class="d-flex align-items-center">
+                        <span class="summary-icon" style="background: rgba(14, 116, 144, 0.14); color: #0e7490;">
+                            <i class="fas fa-file-medical"></i>
+                        </span>
+                        <div>
+                            <div class="summary-title">Medical Reports</div>
+                            <div class="summary-value"><?php echo $totalReports; ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="summary-card">
+                    <div class="d-flex align-items-center">
+                        <span class="summary-icon" style="background: rgba(5, 150, 105, 0.14); color: #059669;">
+                            <i class="fas fa-prescription"></i>
+                        </span>
+                        <div>
+                            <div class="summary-title">Prescriptions</div>
+                            <div class="summary-value"><?php echo $totalPrescriptions; ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="summary-card">
+                    <div class="d-flex align-items-center">
+                        <span class="summary-icon" style="background: rgba(217, 119, 6, 0.14); color: #b45309;">
+                            <i class="fas fa-heartbeat"></i>
+                        </span>
+                        <div>
+                            <div class="summary-title">Treatments</div>
+                            <div class="summary-value"><?php echo $totalTreatments; ?></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Patient Information Card -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card patient-info-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Patient Information</h5>
+                        <span class="badge" style="background: var(--primary-color);">Patient ID: <?php echo $patientId; ?></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="patient-profile-strip">
+                            <div class="patient-avatar">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <div>
+                                <h5 class="patient-name">
+                                    <?php 
+                                        echo !empty($patient['name']) ? htmlspecialchars($patient['name']) : 
+                                             (!empty($patient['first_name']) ? 
+                                                 htmlspecialchars($patient['first_name'] . ' ' . ($patient['last_name'] ?? '')) : 
+                                                 'N/A'); 
+                                    ?>
+                                </h5>
+                                <?php if (!empty($patient['file_number'])): ?>
+                                <div class="patient-meta">File #<?php echo htmlspecialchars($patient['file_number']); ?></div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <?php if (!empty($patient['civil_id'])): ?>
+                            <div class="col-12 col-md-6">
+                                <div class="info-item d-flex align-items-center">
+                                    <i class="fas fa-id-card"></i>
+                                    <div>
+                                        <div class="info-label">Civil ID</div>
+                                        <div class="info-value"><?php echo htmlspecialchars($patient['civil_id']); ?></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if (!empty($patient['mobile'])): ?>
+                            <div class="col-12 col-md-6">
+                                <div class="info-item d-flex align-items-center">
+                                    <i class="fas fa-mobile-alt"></i>
+                                    <div>
+                                        <div class="info-label">Mobile</div>
+                                        <div class="info-value"><?php echo htmlspecialchars($patient['mobile']); ?></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if (!empty($patient['phone'])): ?>
+                            <div class="col-12 col-md-6">
+                                <div class="info-item d-flex align-items-center">
+                                    <i class="fas fa-phone-alt"></i>
+                                    <div>
+                                        <div class="info-label">Phone</div>
+                                        <div class="info-value"><?php echo htmlspecialchars($patient['phone']); ?></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if (!empty($patient['email'])): ?>
+                            <div class="col-12 col-md-6">
+                                <div class="info-item d-flex align-items-center">
+                                    <i class="fas fa-envelope"></i>
+                                    <div class="text-truncate">
+                                        <div class="info-label">Email</div>
+                                        <div class="info-value text-truncate"><?php echo htmlspecialchars($patient['email']); ?></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card filter-card">
+            <div class="card-body">
+                <form method="GET" action="patient_dashboard.php" class="row g-3 align-items-end">
+                    <?php if ($accessMode === 'token'): ?>
+                    <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
+                    <?php endif; ?>
+
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Record Type</label>
+                        <select class="form-select" name="record_type">
+                            <option value="all" <?php echo $filterType === 'all' ? 'selected' : ''; ?>>All Records</option>
+                            <option value="documents" <?php echo $filterType === 'documents' ? 'selected' : ''; ?>>Documents</option>
+                            <option value="reports" <?php echo $filterType === 'reports' ? 'selected' : ''; ?>>Medical Reports</option>
+                            <option value="prescriptions" <?php echo $filterType === 'prescriptions' ? 'selected' : ''; ?>>Prescriptions</option>
+                            <option value="treatments" <?php echo $filterType === 'treatments' ? 'selected' : ''; ?>>Treatments</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-control" name="q" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Title, category, treatment...">
+                    </div>
+
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">From Date</label>
+                        <input type="date" class="form-control" name="date_from" value="<?php echo htmlspecialchars($dateFrom); ?>">
+                    </div>
+
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">To Date</label>
+                        <input type="date" class="form-control" name="date_to" value="<?php echo htmlspecialchars($dateTo); ?>">
+                    </div>
+
+                    <div class="col-6 col-md-1">
+                        <label class="form-label">Per Page</label>
+                        <select class="form-select" name="per_page">
+                            <option value="5" <?php echo $perPage === 5 ? 'selected' : ''; ?>>5</option>
+                            <option value="10" <?php echo $perPage === 10 ? 'selected' : ''; ?>>10</option>
+                            <option value="20" <?php echo $perPage === 20 ? 'selected' : ''; ?>>20</option>
+                        </select>
+                    </div>
+
+                    <div class="col-6 col-md-1 d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                        <a href="<?php echo htmlspecialchars($resetFilterUrl); ?>" class="btn btn-outline-secondary btn-sm">Reset</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Documents Section -->
         <div class="row g-4">
+            <?php if ($showDocuments): ?>
             <!-- Documents -->
-            <div class="col-12 col-md-6 col-lg-4">
+            <div class="<?php echo $documentsColClass; ?>">
                 <div class="card document-card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <div class="me-2" style="width: 36px; height: 36px; background: rgba(108, 117, 125, 0.12); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-folder-open" style="color: #6c757d;"></i>
+                            <div class="me-2" style="width: 36px; height: 36px; background: rgba(71, 85, 105, 0.14); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-folder-open" style="color: #475569;"></i>
                             </div>
                             <span>Documents</span>
                         </div>
-                        <span class="badge-count" style="background: #6c757d;"><?php echo count($documents); ?></span>
+                        <span class="badge-count" style="background: #475569;"><?php echo $filteredDocumentsTotal; ?></span>
                     </div>
                     <div class="document-list p-3">
                         <?php if (!empty($documents)): ?>
@@ -609,7 +1172,7 @@ $conn->close();
                                 <a href="<?php echo $docUrl; ?>"
                                    class="text-decoration-none text-dark document-item" target="_blank">
                                     <div class="d-flex align-items-center">
-                                        <div class="document-icon" style="background: rgba(108, 117, 125, 0.12); color: #6c757d;">
+                                        <div class="document-icon" style="background: rgba(71, 85, 105, 0.14); color: #475569;">
                                             <i class="fas fa-file"></i>
                                         </div>
                                         <div class="document-info">
@@ -626,24 +1189,30 @@ $conn->close();
                         <?php else: ?>
                             <div class="empty-message">
                                 <i class="fas fa-inbox display-4 text-muted mb-2"></i>
-                                <p class="mb-0">No documents found</p>
+                                <p class="mb-0"><?php echo ($searchQuery !== '' || $dateFrom !== '' || $dateTo !== '') ? 'No documents match your filters' : 'No documents found'; ?></p>
                             </div>
                         <?php endif; ?>
                     </div>
+                    <div class="section-pagination">
+                        <small class="records-meta">Showing <?php echo $documentsDisplayStart; ?>-<?php echo $documentsDisplayEnd; ?> of <?php echo $filteredDocumentsTotal; ?></small>
+                        <?php echo $renderPagination($pageDocuments, $totalPagesDocuments, 'page_documents'); ?>
+                    </div>
                 </div>
             </div>
+            <?php endif; ?>
 
+            <?php if ($showReports): ?>
             <!-- Medical Reports -->
-            <div class="col-12 col-md-6 col-lg-4">
+            <div class="<?php echo $reportsColClass; ?>">
                 <div class="card document-card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <div class="me-2" style="width: 36px; height: 36px; background: rgba(13, 110, 253, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-file-medical" style="color: var(--primary-color);"></i>
+                            <div class="me-2" style="width: 36px; height: 36px; background: rgba(14, 116, 144, 0.14); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-file-medical" style="color: #0e7490;"></i>
                             </div>
                             <span>Medical Reports</span>
                         </div>
-                        <span class="badge-count"><?php echo count($reports); ?></span>
+                        <span class="badge-count"><?php echo $filteredReportsTotal; ?></span>
                     </div>
                     <div class="document-list p-3">
                         <?php if (!empty($reports)): ?>
@@ -654,7 +1223,7 @@ $conn->close();
                                     : ('view_report.php?id=' . (int)$report['id']); ?>" 
                                    class="text-decoration-none text-dark document-item" target="_blank">
                                     <div class="d-flex align-items-center">
-                                        <div class="document-icon">
+                                        <div class="document-icon" style="background: rgba(14, 116, 144, 0.14); color: #0e7490;">
                                             <i class="fas fa-file-alt"></i>
                                         </div>
                                         <div class="document-info">
@@ -668,24 +1237,30 @@ $conn->close();
                         <?php else: ?>
                             <div class="empty-message">
                                 <i class="fas fa-inbox display-4 text-muted mb-2"></i>
-                                <p class="mb-0">No medical reports found</p>
+                                <p class="mb-0"><?php echo ($searchQuery !== '' || $dateFrom !== '' || $dateTo !== '') ? 'No medical reports match your filters' : 'No medical reports found'; ?></p>
                             </div>
                         <?php endif; ?>
                     </div>
+                    <div class="section-pagination">
+                        <small class="records-meta">Showing <?php echo $reportsDisplayStart; ?>-<?php echo $reportsDisplayEnd; ?> of <?php echo $filteredReportsTotal; ?></small>
+                        <?php echo $renderPagination($pageReports, $totalPagesReports, 'page_reports'); ?>
+                    </div>
                 </div>
             </div>
+            <?php endif; ?>
 
+            <?php if ($showPrescriptions): ?>
             <!-- Prescriptions -->
-            <div class="col-12 col-md-6 col-lg-4">
+            <div class="<?php echo $prescriptionsColClass; ?>">
                 <div class="card document-card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <div class="me-2" style="width: 36px; height: 36px; background: rgba(40, 167, 69, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-prescription" style="color: #28a745;"></i>
+                            <div class="me-2" style="width: 36px; height: 36px; background: rgba(5, 150, 105, 0.14); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-prescription" style="color: #059669;"></i>
                             </div>
                             <span>Prescriptions</span>
                         </div>
-                        <span class="badge-count" style="background: #28a745;"><?php echo count($prescriptions); ?></span>
+                        <span class="badge-count" style="background: #059669;"><?php echo $filteredPrescriptionsTotal; ?></span>
                     </div>
                     <div class="document-list p-3">
                         <?php if (!empty($prescriptions)): ?>
@@ -696,7 +1271,7 @@ $conn->close();
                                     : ('view_prescription.php?id=' . (int)$prescription['id']); ?>" 
                                    class="text-decoration-none text-dark document-item" target="_blank">
                                     <div class="d-flex align-items-center">
-                                        <div class="document-icon" style="background: rgba(40, 167, 69, 0.1); color: #28a745;">
+                                        <div class="document-icon" style="background: rgba(5, 150, 105, 0.14); color: #059669;">
                                             <i class="fas fa-pills"></i>
                                         </div>
                                         <div class="document-info">
@@ -710,24 +1285,30 @@ $conn->close();
                         <?php else: ?>
                             <div class="empty-message">
                                 <i class="fas fa-inbox display-4 text-muted mb-2"></i>
-                                <p class="mb-0">No prescriptions found</p>
+                                <p class="mb-0"><?php echo ($searchQuery !== '' || $dateFrom !== '' || $dateTo !== '') ? 'No prescriptions match your filters' : 'No prescriptions found'; ?></p>
                             </div>
                         <?php endif; ?>
                     </div>
+                    <div class="section-pagination">
+                        <small class="records-meta">Showing <?php echo $prescriptionsDisplayStart; ?>-<?php echo $prescriptionsDisplayEnd; ?> of <?php echo $filteredPrescriptionsTotal; ?></small>
+                        <?php echo $renderPagination($pagePrescriptions, $totalPagesPrescriptions, 'page_prescriptions'); ?>
+                    </div>
                 </div>
             </div>
+            <?php endif; ?>
 
+            <?php if ($showTreatments): ?>
             <!-- Treatments -->
-            <div class="col-12 col-md-6 col-lg-4">
+            <div class="<?php echo $treatmentsColClass; ?>">
                 <div class="card document-card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <div class="me-2" style="width: 36px; height: 36px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-heartbeat" style="color: #ffc107;"></i>
+                            <div class="me-2" style="width: 36px; height: 36px; background: rgba(217, 119, 6, 0.14); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-heartbeat" style="color: #b45309;"></i>
                             </div>
                             <span>Treatments</span>
                         </div>
-                        <span class="badge-count" style="background: #ffc107;"><?php echo count($treatments); ?></span>
+                        <span class="badge-count" style="background: #b45309;"><?php echo $filteredTreatmentsTotal; ?></span>
                     </div>
                     <div class="document-list p-3">
                         <?php if (!empty($treatments)): ?>
@@ -738,7 +1319,7 @@ $conn->close();
                                     : ('view_treatment.php?id=' . (int)$treatment['id']); ?>" 
                                    class="text-decoration-none text-dark document-item" target="_blank">
                                     <div class="d-flex align-items-center">
-                                        <div class="document-icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107;">
+                                        <div class="document-icon" style="background: rgba(217, 119, 6, 0.14); color: #b45309;">
                                             <i class="fas fa-stethoscope"></i>
                                         </div>
                                         <div class="document-info">
@@ -757,12 +1338,17 @@ $conn->close();
                         <?php else: ?>
                             <div class="empty-message">
                                 <i class="fas fa-inbox display-4 text-muted mb-2"></i>
-                                <p class="mb-0">No treatments found</p>
+                                <p class="mb-0"><?php echo ($searchQuery !== '' || $dateFrom !== '' || $dateTo !== '') ? 'No treatments match your filters' : 'No treatments found'; ?></p>
                             </div>
                         <?php endif; ?>
                     </div>
+                    <div class="section-pagination">
+                        <small class="records-meta">Showing <?php echo $treatmentsDisplayStart; ?>-<?php echo $treatmentsDisplayEnd; ?> of <?php echo $filteredTreatmentsTotal; ?></small>
+                        <?php echo $renderPagination($pageTreatments, $totalPagesTreatments, 'page_treatments'); ?>
+                    </div>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
 
         <!-- Footer -->
