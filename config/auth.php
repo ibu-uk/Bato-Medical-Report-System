@@ -72,6 +72,7 @@ function canDeleteReports() {
 function canEditPrescriptions() {
     return isLoggedIn() && (
         (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'doctor') ||
         !empty($_SESSION['can_edit_prescriptions'])
     );
 }
